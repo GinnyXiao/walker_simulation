@@ -1,0 +1,24 @@
+<!--
+Place sbpl-specific config here so it can be included by both sbpl-only planner
+plugin and the family planner plugin
+-->
+<launch>
+    <rosparam command="load" file="$(find walker_simulation)/config/sbpl_planning.yaml"/>
+
+    <group ns="graph_configs/RightArmManipLatticeConfig">
+        <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
+    </group>
+
+    <!-- 
+    <group ns="graph_configs/LeftArmManipLatticeConfig">
+        <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
+    </group>
+
+    <group ns="graph_configs/FullBodyManipLatticeConfig">
+        <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
+    </group>
+
+    <group ns="graph_configs/BaseManipLatticeConfig">
+        <param name="mprim_filename" value="$(find walker_simulation)/config/walker_base.mprim"/>
+    </group> -->
+</launch>

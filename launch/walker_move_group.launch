@@ -1,0 +1,23 @@
+<launch>
+  <arg name="debug" default="false"/>
+  <arg name="info" default="$(arg debug)"/>
+
+  <arg unless="$(arg debug)" name="launch_prefix" value=""/>
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb ex --args"/>
+  <arg unless="$(arg info)" name="command_args" value=""/>
+  <arg     if="$(arg info)" name="command_args" value="--debug"/>
+
+  <arg name="load_robot_description" default="true"/>
+  <arg name="robot_description" default="robot_description"/>
+
+  <!-- Load walker's universal robot description format (URDF) -->
+  <param if="$(arg load_robot_description)" name="$(arg robot_description)"
+        command="cat $(find wheeled_walker)/robots/wheeled_walker.xacro"/>
+
+  <param name="collision_detector" value="collision_detection/CollisionPluginSBPL"/>
+  <rosparam command="load" file="$(find walker_planner)/config/collision_model_walker.yaml"/>
+
+  <!-- Planning (modified from original move_group.launch) -->
+  <include ns="move_group" file="$(find walker_simulation)/launch/sbpl_planning_pipeline.launch.xml"/>
+  
+</launch>
