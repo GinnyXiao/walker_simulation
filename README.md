@@ -8,6 +8,8 @@ Pick-and-place simulation for wheeled walker robot.
 2. Launch planner: ```roslaunch walker_planner walker_interface_planner.launch```
 3. Launch move_group: 
 4. Run Rviz and use this config: ```src/wheeled_walker/urdf.rviz```
+5. Run conveyor simulator
+6. Run demo: ```rosrun walker_simulation walker_simulation_node```
 
 ## TODO 
 
