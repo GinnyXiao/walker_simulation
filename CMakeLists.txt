@@ -141,7 +141,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(walker_simulation_node src/walker_simulation_node.cpp)
-# add_executable(demo_executive src/demo_executive.cpp)
+add_executable(conveyor_simulator src/conveyor_simulator.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -156,7 +156,13 @@ add_executable(walker_simulation_node src/walker_simulation_node.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(walker_simulation_node
   ${roscpp_LIBRARIES}
+  ${tf_LIBRARIES}
   #${catkin_LIBRARIES}
+)
+
+target_link_libraries(conveyor_simulator 
+  ${roscpp_LIBRARIES}
+  ${tf_LIBRARIES}
 )
 
 #############
