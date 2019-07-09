@@ -1,0 +1,8 @@
+<launch>
+  <arg name="KINECT1" default="$(optenv KINECT1 false)" />
+  <arg name="KINECT2" default="$(optenv KINECT2 false)" />
+  <!-- send walker urdf to param server -->
+  <group>
+    <param name="robot_description" command="$(find xacro)/xacro '$(find wheeled_walker)/robots/wheeled_walker.xacro' --inorder KINECT1:=$(arg KINECT1) KINECT2:=$(arg KINECT2)" />
+  </group>
+</launch>
