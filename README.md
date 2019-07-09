@@ -20,3 +20,5 @@ Pick-and-place simulation for wheeled walker robot.
 
 ## Troubleshooting
 
+- When running ```demo.launch```, error message ```[ERROR]: Unable to connect to move_group action server 'move_group' within allotted time (30s)``` popped out: move_group hasn't been fully launched. Fix: Wait for a moment, restart rviz. 
+
