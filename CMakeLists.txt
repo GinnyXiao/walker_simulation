@@ -142,6 +142,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(walker_simulation_node src/walker_simulation_node.cpp)
 add_executable(conveyor_simulator src/conveyor_simulator.cpp)
+add_executable(publish_dummy_goal src/publish_dummy_goal.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,10 +158,17 @@ add_executable(conveyor_simulator src/conveyor_simulator.cpp)
 target_link_libraries(walker_simulation_node
   ${roscpp_LIBRARIES}
   ${tf_LIBRARIES}
+  ${actionlib_LIBRARIES}
+  ${moveit_ros_planning_interface_LIBRARIES}
   #${catkin_LIBRARIES}
 )
 
 target_link_libraries(conveyor_simulator 
+  ${roscpp_LIBRARIES}
+  ${tf_LIBRARIES}
+)
+
+target_link_libraries(publish_dummy_goal 
   ${roscpp_LIBRARIES}
   ${tf_LIBRARIES}
 )
