@@ -36,23 +36,23 @@ right_arm:
       graph_config: RightArmAdaptiveWorkspaceLatticeConfig
       shortcut_config: JointSpaceShortcutConfig
 
-left_arm:
-  planner_configs:
-    arastar_bfs_manip:
-      search_config: ARAConfig
-      heuristic_config: BFSConfig
-      graph_config: LeftArmManipLatticeConfig
-      shortcut_config: JointSpaceShortcutConfig
-    larastar_bfs_manip:
-      search_config: ARAConfig
-      heuristic_config: BFSConfig
-      graph_config: LeftArmManipLatticeConfig
-      shortcut_config: JointSpaceShortcutConfig
-    mhastar_bfs_manip:
-      search_config: ARAConfig
-      heuristic_config: BFSConfig
-      graph_config: LeftArmManipLatticeConfig
-      shortcut_config: JointSpaceShortcutConfig
+# left_arm:
+#   planner_configs:
+#     arastar_bfs_manip:
+#       search_config: ARAConfig
+#       heuristic_config: BFSConfig
+#       graph_config: LeftArmManipLatticeConfig
+#       shortcut_config: JointSpaceShortcutConfig
+#     larastar_bfs_manip:
+#       search_config: ARAConfig
+#       heuristic_config: BFSConfig
+#       graph_config: LeftArmManipLatticeConfig
+#       shortcut_config: JointSpaceShortcutConfig
+#     mhastar_bfs_manip:
+#       search_config: ARAConfig
+#       heuristic_config: BFSConfig
+#       graph_config: LeftArmManipLatticeConfig
+#       shortcut_config: JointSpaceShortcutConfig
 
 # right_arm_and_torso:
 #   planner_configs:
@@ -95,9 +95,21 @@ left_arm:
 #       graph_config: LeftArmAndTorsoManipLatticeConfig
 #       shortcut_config: JointSpaceShortcutConfig
 
-#arms:
-#  planner_configs: {}
-#
+# right_arm:
+#  planner_configs: 
+#     search: arastar
+#     epsilon: 100.0
+#     repair_time: 1.0
+#     heuristic: bfs
+#     bfs_res_x: 0.015
+#     bfs_res_y: 0.015
+#     bfs_res_z: 0.015
+#     bfs_sphere_radius: 0.02
+#     shortcutter: joint_space
+#     shortcut_path: true
+#     interpolate_path: true
+ 
+
 #base:
 #  planner_configs: {}
 #
@@ -146,77 +158,59 @@ heuristic_configs:
     heuristic: joint_distance
 
 # walker_right_arm.yaml
-# planning:
-#   discretization:
-#     x    0.05
-#     y    0.05
-#     theta    0.19625
-#     right_j1    0.017453292519943295
-#     right_j2    0.017453292519943295
-#     right_j3    0.017453292519943295
-#     right_j4    0.017453292519943295
-#     right_j5    0.017453292519943295
-#     right_j6    0.017453292519943295
-#     right_j7    0.017453292519943295
-#   use_xyz_snap_mprim: false
-#   use_rpy_snap_mprim: false
-#   use_xyzrpy_snap_mprim: false
-#   use_short_dist_mprims: false
-#   xyz_snap_dist_thresh: 0.2
-#   rpy_snap_dist_thresh: 0.5
-#   xyzrpy_snap_dist_thresh: 1.0
-#   short_dist_mprims_thresh: 0.4
-
 graph_configs:
-  # right_arm
   RightArmManipLatticeConfig:
     graph: manip
-    # discretization:
-    #   r_shoulder_pan_joint:   0.017453292519943
-    #   r_shoulder_lift_joint:  0.017453292519943
-    #   r_upper_arm_roll_joint: 0.017453292519943
-    #   r_forearm_roll_joint:   0.017453292519943
-    #   r_elbow_flex_joint:     0.017453292519943
-    #   r_wrist_flex_joint:     0.017453292519943
-    #   r_wrist_roll_joint:     0.017453292519943
-    # use_xyz_snap_mprim: false
-    # use_rpy_snap_mprim: true
-    # use_xyzrpy_snap_mprim: true
-    # use_short_dist_mprims: true
-    # xyz_snap_dist_thresh: 0.0
-    # rpy_snap_dist_thresh: 0.04
-    # xyzrpy_snap_dist_thresh: 0.2
-    # short_dist_mprims_thresh: 0.4
     discretization:
-      x    0.05
-      y    0.05
-      theta    0.19625
-      right_j1    0.017453292519943295
-      right_j2    0.017453292519943295
-      right_j3    0.017453292519943295
-      right_j4    0.017453292519943295
-      right_j5    0.017453292519943295
-      right_j6    0.017453292519943295
-      right_j7    0.017453292519943295
+      right_limb_j1    0.017453292519943295
+      right_limb_j2    0.017453292519943295
+      right_limb_j3    0.017453292519943295
+      right_limb_j4    0.017453292519943295
+      right_limb_j5    0.017453292519943295
+      right_limb_j6    0.017453292519943295
+      right_limb_j7    0.017453292519943295
     use_xyz_snap_mprim: false
-    use_rpy_snap_mprim: false
-    use_xyzrpy_snap_mprim: false
-    use_short_dist_mprims: false
-    xyz_snap_dist_thresh: 0.2
-    rpy_snap_dist_thresh: 0.5
-    xyzrpy_snap_dist_thresh: 1.0
+    use_rpy_snap_mprim: true
+    use_xyzrpy_snap_mprim: true
+    use_short_dist_mprims: true
+    xyz_snap_dist_thresh: 0.0 #0.2
+    rpy_snap_dist_thresh: 0.04 #0.5
+    xyzrpy_snap_dist_thresh: 0.2 #1.0
     short_dist_mprims_thresh: 0.4
-  RightArmWorkspaceLatticeConfig:
-    graph: workspace
-    discretization:
-        fk_pos_x: 0.02
-        fk_pos_y: 0.02
-        fk_pos_z: 0.02
-        fk_rot_r: 0.017453292519943
-        fk_rot_p: 0.017453292519943
-        fk_rot_y: 0.017453292519943
-  RightArmAdaptiveWorkspaceLatticeConfig:
-    graph: adaptive_workspace_lattice
+
+
+
+# graph_configs:
+#   # right_arm
+#   RightArmManipLatticeConfig:
+#     graph: manip
+#     discretization:
+#       r_shoulder_pan_joint:   0.017453292519943
+#       r_shoulder_lift_joint:  0.017453292519943
+#       r_upper_arm_roll_joint: 0.017453292519943
+#       r_forearm_roll_joint:   0.017453292519943
+#       r_elbow_flex_joint:     0.017453292519943
+#       r_wrist_flex_joint:     0.017453292519943
+#       r_wrist_roll_joint:     0.017453292519943
+#     use_xyz_snap_mprim: false
+#     use_rpy_snap_mprim: true
+#     use_xyzrpy_snap_mprim: true
+#     use_short_dist_mprims: true
+#     xyz_snap_dist_thresh: 0.0
+#     rpy_snap_dist_thresh: 0.04
+#     xyzrpy_snap_dist_thresh: 0.2
+#     short_dist_mprims_thresh: 0.4
+  # RightArmWorkspaceLatticeConfig:
+  #   graph: workspace
+  #   discretization:
+  #       fk_pos_x: 0.02
+  #       fk_pos_y: 0.02
+  #       fk_pos_z: 0.02
+  #       fk_rot_r: 0.017453292519943
+  #       fk_rot_p: 0.017453292519943
+  #       fk_rot_y: 0.017453292519943
+  # RightArmAdaptiveWorkspaceLatticeConfig:
+  #   graph: adaptive_workspace_lattice
 
   # # right_arm_and_torso
   # RightArmAndTorsoManipLatticeConfig:
@@ -257,6 +251,29 @@ graph_configs:
   #   xyz_snap_dist_thresh: 0.0
   #   rpy_snap_dist_thresh: 0.04
   #   xyzrpy_snap_dist_thresh: 0.2
+  #   short_dist_mprims_thresh: 0.4
+
+  # left_arm
+  # LeftArmManipLatticeConfig:
+  #   graph: manip
+  #   discretization:
+  #     x    0.05
+  #     y    0.05
+  #     theta    0.19625
+  #     left_limb_j1    0.017453292519943295
+  #     left_limb_j2    0.017453292519943295
+  #     left_limb_j3    0.017453292519943295
+  #     left_limb_j4    0.017453292519943295
+  #     left_limb_j5    0.017453292519943295
+  #     left_limb_j6    0.017453292519943295
+  #     left_limb_j7    0.017453292519943295
+  #   use_xyz_snap_mprim: false
+  #   use_rpy_snap_mprim: false
+  #   use_xyzrpy_snap_mprim: false
+  #   use_short_dist_mprims: false
+  #   xyz_snap_dist_thresh: 0.2
+  #   rpy_snap_dist_thresh: 0.5
+  #   xyzrpy_snap_dist_thresh: 1.0
   #   short_dist_mprims_thresh: 0.4
 
   # # left_arm_and_torso

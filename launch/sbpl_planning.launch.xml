@@ -6,15 +6,15 @@ plugin and the family planner plugin
     <rosparam command="load" file="$(find walker_simulation)/config/sbpl_planning.yaml"/>
 
     <group ns="graph_configs/RightArmManipLatticeConfig">
-        <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
+        <param name="mprim_filename" value="$(find walker_simulation)/config/walker_right_arm.mprim"/>
     </group>
 
-    <!-- 
+<!--     
     <group ns="graph_configs/LeftArmManipLatticeConfig">
         <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
-    </group>
+    </group> -->
 
-    <group ns="graph_configs/FullBodyManipLatticeConfig">
+    <!-- <group ns="graph_configs/FullBodyManipLatticeConfig">
         <param name="mprim_filename" value="$(find walker_simulation)/config/walker.mprim"/>
     </group>
 
