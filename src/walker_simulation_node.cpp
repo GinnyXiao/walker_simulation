@@ -77,7 +77,6 @@ State DoMoveToGrasp()
     tip_pose.position.y = -0.4;
     tip_pose.position.z = 0.8;
 
-
     g_move_group->setPoseTarget(tip_pose);
     std::string pose_reference_frame = "base_footprint";
     g_move_group->setPoseReferenceFrame(pose_reference_frame);
