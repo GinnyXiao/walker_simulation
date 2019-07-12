@@ -128,7 +128,7 @@ bool TryHardTransformPose(
             g_listener->transformPose(frame_id, pose_in, pose_out);
             return true;
         } catch (...) {
-
+            ROS_INFO("Transform not available from '%s' to '%s'", pose_in.header.frame_id.c_str(), frame_id.c_str());
         }
         ros::Duration(0.01).sleep();
     }
@@ -297,6 +297,7 @@ PickState DoWaitForGoal(PickMachine* mach)
 {
     while (ros::ok()) {
         if (mach->goal_ready) {
+            ROS_INFO("Goal ready!");
             return PickState::ExecutePickup;
         }
         ros::Duration(1.0).sleep();
@@ -413,7 +414,7 @@ bool TryPickObject(PickMachine* mach, bool left)
 PickState DoMoveToGrasp(PickMachine* mach)
 {
     ROS_INFO("Move link '%s' to grasp pose", mach->move_group->getEndEffectorLink().c_str());
-#if 1
+
     // geometry_msgs::Pose tip_pose;
     // tip_pose.orientation.x = 0.1472033;
     // tip_pose.orientation.y = 0.2944066;
@@ -431,8 +432,10 @@ PickState DoMoveToGrasp(PickMachine* mach)
     auto err = mach->move_group->move();
     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
         ROS_ERROR("Failed to move arm to grasp pose");
-    }
-#endif
+        return PickState::WaitForGoal;
+    } 
+    
+    ROS_INFO("Successfully move arm to grasp pose!");
     return PickState::GraspObject;
 }
 
@@ -497,11 +500,7 @@ auto MakeConveyorCollisionObject() -> moveit_msgs::CollisionObject
 
 void RunStateMachine(PickMachine* mach)
 {
-    ros::Rate loop_rate(5.0);
-
     while (ros::ok()) {
-        ros::spinOnce();
-
         if (mach->prev_state != mach->curr_state) {
             ROS_INFO("Enter state '%s' -> '%s'", to_cstring(mach->prev_state), to_cstring(mach->curr_state));
             if (mach->states[(int)mach->curr_state].enter) {
@@ -523,8 +522,6 @@ void RunStateMachine(PickMachine* mach)
             }
             mach->curr_state = mach->next_state;
         }
-
-        loop_rate.sleep();
     }
 }
 
@@ -562,8 +559,8 @@ int main(int argc, char* argv[])
     g_broadcaster.reset(new tf::TransformBroadcaster);
     g_listener.reset(new tf::TransformListener);
 
-    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-    planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
+    // moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    // planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
 
     ros::Subscriber pose_sub = nh.subscribe("ar_pose_marker", 1000, ARPoseCallback);
     fillGraspPoses();
@@ -670,8 +667,18 @@ int main(int argc, char* argv[])
 #endif
 
     // only enable right arm
+    auto r_mach_thread = std::thread(RunStateMachine, &right_machine);
     DoLocalizeConveyor();
-    RunStateMachine(&right_machine);
 
-return 0;
+    ros::Rate loop_rate(1.0);   
+    while (ros::ok) {
+        if (right_machine.curr_state == PickState::WaitForGoal){
+            TryPickObject(&right_machine, false);
+        }
+        loop_rate.sleep();
+    }
+
+    ros::waitForShutdown();
+    r_mach_thread.join();
+    return 0;
 }
