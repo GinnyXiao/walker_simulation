@@ -40,6 +40,13 @@
                 " />
   -->
 
+  <!-- We do not have a robot connected, so publish fake joint states -->
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
+
+  <!-- Given the published joint states, publish tf for the robot links -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+
+  <!-- Collision detection -->
   <param name="collision_detector" value="collision_detection/CollisionPluginSBPL"/>
   <rosparam command="load" file="$(find walker_planner)/config/collision_model_walker.yaml"/>
 
