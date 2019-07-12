@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 
     auto conveyor_pos_z = 0.5 * conveyor_height;
 
-    auto conveyor_speed = 0.1;
+    auto conveyor_speed = 0.3;
 
     // width of the area at the end of the conveyor where objects are loaded
     // and are not yet visible to the robot

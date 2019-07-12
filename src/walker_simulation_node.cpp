@@ -2,6 +2,8 @@
 #include <ros/ros.h>
 #include <memory>
 #include <unordered_map>
+#include <mutex>
+#include <thread>
 
 #include <ar_track_alvar_msgs/AlvarMarker.h>
 #include <ar_track_alvar_msgs/AlvarMarkers.h>
@@ -18,6 +20,15 @@ std::unique_ptr<MoveGroup> g_move_group;
 std::unordered_map<int, geometry_msgs::PoseStamped> g_id_to_pose;
 ar_track_alvar_msgs::AlvarMarkers g_markers;
 geometry_msgs::PoseStamped g_grasp_pose;
+
+std::unordered_map<uint32_t, int> g_marker_counts;
+geometry_msgs::PoseStamped g_grasp_pose_base_footprint;
+std::mutex g_marker_mutex;
+
+const double g_time_at_execute_to_grasp = 4.2;
+double g_grasp_offset;
+double g_conveyer_speed;
+ros::Time g_time_at_execute;
 
 void fillGraspPoses()
 {
@@ -37,6 +48,21 @@ void fillGraspPoses()
 void ARPoseCallback(const ar_track_alvar_msgs::AlvarMarkers& msg)
 {
     g_markers = msg;
+}
+
+void GetFreshMarker(ar_track_alvar_msgs::AlvarMarker& m)
+{
+    g_marker_mutex.lock();
+    while (!g_markers.markers.size() > 0) {
+        if (!ros::ok()) {
+            break;
+        }
+        g_marker_mutex.unlock();
+        ros::Duration(0.01).sleep();
+        g_marker_mutex.lock();
+    }
+    m = g_markers.markers[0];
+    g_marker_mutex.unlock();
 }
 
 enum struct State {
@@ -89,42 +115,120 @@ State DoLocalizeConveyor()
 
 State DoFindObject()
 {
-    // tf::TransformListener listener;
+    tf::TransformListener listener;
 
-    // assuming we see only one object at a time
-    // auto marker = g_markers.markers[0];
-    // int id = marker.id;
-    // auto pose = marker.pose;
-    // std::string marker_frame = "ar_marker_" + std::to_string(id);
+    ar_track_alvar_msgs::AlvarMarker marker;
+    GetFreshMarker(marker);
+    int id = marker.id;
 
-    // auto it = g_id_to_pose.find(id); //geometry_msgs::PoseStamped
-    // if (it == g_id_to_pose.end()) {
-    //     ROS_ERROR("Could not find object in the library");
-    //     return State::FindObject;
-    // }
+    std::string marker_frame = "ar_marker_" + std::to_string(id);
 
-    // auto g_tf = it->second;
-    // listener.waitForTransform("base_footprint", marker_frame,
-    //                           ros::Time(0), ros::Duration(10.0));
-    // listener.transformPose(marker_frame, g_tf, g_grasp_pose);
-    return State::ExecutePickup;
+    //***************************** estimate speed
+    // ROS_INFO("Estimating speed");
+
+    int num_frames = 6;
+    double lapse = 0.2;
+    std::vector<double> x(num_frames);
+    std::vector<double> y(num_frames);
+    std::vector<double> z(num_frames);
+    std::vector<double> dists;
+
+    for (int i = 0; i < num_frames; ++i) {
+        ar_track_alvar_msgs::AlvarMarker m;
+        GetFreshMarker(m);
+        
+        // transform to some static frame
+        geometry_msgs::PoseStamped output_pose;
+        m.pose.header.frame_id = m.header.frame_id;
+        //to avoid crash
+
+        while (true) {
+            try {
+                if(!ros::ok())
+                    break;
+                listener.transformPose("base_footprint", m.pose, output_pose);
+                break;
+            }
+            catch (...) {
+
+            }
+            ros::Duration(0.01).sleep();
+        }
+
+        x[i] = output_pose.pose.position.x;
+        y[i] = output_pose.pose.position.y;
+        z[i] = output_pose.pose.position.z;
+        printf("frame %d  x: %f y: %f z: %f\n", i, x[i], y[i], z[i]);
+
+        if (i < num_frames - 1) { 
+            ros::Duration(lapse).sleep();
+        }
+        else {
+            g_grasp_pose_base_footprint.pose.position.x = x[i];
+            g_grasp_pose_base_footprint.pose.position.y = y[i];
+        }
+    }
+    
+    double mean_dist = 0;
+    // skip first 3 frames
+    for (int i = 3; i < num_frames - 1; ++i) {
+        dists.push_back(fabs(y[i+1] - y[i]));
+        mean_dist += fabs(y[i+1] - y[i]);
+    }
+
+    mean_dist /= dists.size();
+    
+    g_conveyer_speed = mean_dist / lapse;
+
+    g_grasp_offset =  g_time_at_execute_to_grasp * g_conveyer_speed;
+
+    ROS_INFO("Speed of belt is: %f ", g_conveyer_speed);
+    ROS_INFO("Pick at the offset: %f ", g_grasp_offset);
+
+    //****************************overwriting
+
+    g_grasp_pose_base_footprint.pose.position.x += 0.01;
+
+    g_grasp_pose_base_footprint.pose.position.y -= g_grasp_offset;
+    g_grasp_pose_base_footprint.pose.position.y = std::min(g_grasp_pose_base_footprint.pose.position.y, -0.05);
+
+    // should care about the gripping time
+    ROS_INFO("Picking at y: %f ", g_grasp_pose_base_footprint.pose.position.y);
+    if (g_grasp_pose_base_footprint.pose.position.y < -0.4) {
+        ROS_INFO("Sorry! that was too fast");
+        return State::FindObject;
+    }
+    // g_grasp_pose_base_footprint.pose.position.y = std::max(g_grasp_pose_base_footprint.pose.position.y, -0.35);
+
+    g_grasp_pose_base_footprint.pose.position.z = 0.73; //+= 0.05;
+    g_grasp_pose_base_footprint.pose.orientation.x = g_grasp_pose_base_footprint.pose.orientation.y = 0.0;
+    g_grasp_pose_base_footprint.pose.orientation.z = g_grasp_pose_base_footprint.pose.orientation.w = 0.5 * sqrt(2.0);
+    g_grasp_pose_base_footprint.header.frame_id = "base_footprint";
+
+    listener.waitForTransform("odom_combined", "base_footprint", ros::Time(0), ros::Duration(10.0));
+    listener.transformPose("odom_combined", g_grasp_pose_base_footprint, g_grasp_pose);
+
+    g_time_at_execute = ros::Time::now();
+
+
+return State::ExecutePickup;
 }
 
 State DoMoveToGrasp()
 {
     ROS_INFO("Move link '%s' to grasp pose", g_move_group->getEndEffectorLink().c_str());
 #if 1
-    geometry_msgs::Pose tip_pose;
-    tip_pose.orientation.x = 0.1472033;
-    tip_pose.orientation.y = 0.2944066;
-    tip_pose.orientation.z = 0.0;
-    tip_pose.orientation.w = 0.9442754;
-    tip_pose.position.x = 0.25;
-    tip_pose.position.y = -0.4;
-    tip_pose.position.z = 0.8;
+    // geometry_msgs::Pose tip_pose;
+    // tip_pose.orientation.x = 0.1472033;
+    // tip_pose.orientation.y = 0.2944066;
+    // tip_pose.orientation.z = 0.0;
+    // tip_pose.orientation.w = 0.9442754;
+    // tip_pose.position.x = 0.25;
+    // tip_pose.position.y = -0.4;
+    // tip_pose.position.z = 0.8;
 
-    g_move_group->setPoseTarget(tip_pose);
-    // g_move_group->setPoseTarget(g_grasp_pose.pose);
+    // g_move_group->setPoseTarget(tip_pose);
+    g_move_group->setPoseTarget(g_grasp_pose.pose);
     std::string pose_reference_frame = "base_footprint";
     g_move_group->setPoseReferenceFrame(pose_reference_frame);
 
@@ -202,7 +306,7 @@ int main(int argc, char* argv[])
     planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
 
     ROS_INFO("Create Move Group");
-//    MoveGroup::Options ops(g_planning_group);
+
     g_move_group.reset(new MoveGroup(g_planning_group, 
         boost::shared_ptr<tf::Transformer>(), ros::WallDuration(5.0)));
 
