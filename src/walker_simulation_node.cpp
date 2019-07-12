@@ -7,6 +7,7 @@
 #include <ar_track_alvar_msgs/AlvarMarkers.h>
 #include <actionlib/client/simple_action_client.h>
 #include <moveit/move_group_interface/move_group.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
@@ -45,7 +46,7 @@ enum struct State {
     ExecutePickup,
     GraspObject,
     // CloseGripper,
-    // ExecuteDropoff,
+    ExecuteDropoff,
     // OpenGripper,
     Count
 };
@@ -59,7 +60,7 @@ auto to_cstring(State state) -> const char*
     case State::ExecutePickup:      return "ExecutePickup";
     case State::GraspObject:        return "GraspObject";
     // case State::CloseGripper:       return "CloseGripper";
-    // case State::ExecuteDropoff:     return "ExecuteDropoff";
+    case State::ExecuteDropoff:     return "ExecuteDropoff";
     // case State::OpenGripper:        return "OpenGripper";
     default:                        return "<Unknown>";
     }
@@ -88,24 +89,24 @@ State DoLocalizeConveyor()
 
 State DoFindObject()
 {
-    tf::TransformListener listener;
+    // tf::TransformListener listener;
 
     // assuming we see only one object at a time
-    auto marker = g_markers.markers[0];
-    int id = marker.id;
-    auto pose = marker.pose;
-    std::string marker_frame = "ar_marker_" + std::to_string(id);
+    // auto marker = g_markers.markers[0];
+    // int id = marker.id;
+    // auto pose = marker.pose;
+    // std::string marker_frame = "ar_marker_" + std::to_string(id);
 
-    auto it = g_id_to_pose.find(id); //geometry_msgs::PoseStamped
-    if (it == g_id_to_pose.end()) {
-        ROS_ERROR("Could not find object in the library");
-        return State::FindObject;
-    }
+    // auto it = g_id_to_pose.find(id); //geometry_msgs::PoseStamped
+    // if (it == g_id_to_pose.end()) {
+    //     ROS_ERROR("Could not find object in the library");
+    //     return State::FindObject;
+    // }
 
-    auto g_tf = it->second;
-    listener.waitForTransform("base_footprint", marker_frame,
-                              ros::Time(0), ros::Duration(10.0));
-    listener.transformPose(marker_frame, g_tf, g_grasp_pose);
+    // auto g_tf = it->second;
+    // listener.waitForTransform("base_footprint", marker_frame,
+    //                           ros::Time(0), ros::Duration(10.0));
+    // listener.transformPose(marker_frame, g_tf, g_grasp_pose);
     return State::ExecutePickup;
 }
 
@@ -113,16 +114,17 @@ State DoMoveToGrasp()
 {
     ROS_INFO("Move link '%s' to grasp pose", g_move_group->getEndEffectorLink().c_str());
 #if 1
-    // geometry_msgs::Pose tip_pose;
-    // tip_pose.orientation.x = 0.1472033;
-    // tip_pose.orientation.y = 0.2944066;
-    // tip_pose.orientation.z = 0.0;
-    // tip_pose.orientation.w = 0.9442754;
-    // tip_pose.position.x = 0.25;
-    // tip_pose.position.y = -0.4;
-    // tip_pose.position.z = 0.8;
+    geometry_msgs::Pose tip_pose;
+    tip_pose.orientation.x = 0.1472033;
+    tip_pose.orientation.y = 0.2944066;
+    tip_pose.orientation.z = 0.0;
+    tip_pose.orientation.w = 0.9442754;
+    tip_pose.position.x = 0.25;
+    tip_pose.position.y = -0.4;
+    tip_pose.position.z = 0.8;
 
-    g_move_group->setPoseTarget(g_grasp_pose.pose);
+    g_move_group->setPoseTarget(tip_pose);
+    // g_move_group->setPoseTarget(g_grasp_pose.pose);
     std::string pose_reference_frame = "base_footprint";
     g_move_group->setPoseReferenceFrame(pose_reference_frame);
 
@@ -137,7 +139,7 @@ State DoMoveToGrasp()
 State DoGraspObject()
 {
     // return State::CloseGripper;
-    return State::FindObject;
+    return State::ExecuteDropoff;
 }
 
 // State DoCloseGripper()
@@ -145,15 +147,45 @@ State DoGraspObject()
 //     return State::ExecuteDropoff;
 // }
 
-// State DoExecuteDropoff()
-// {
-//     return State::OpenGripper;
-// }
+State DoExecuteDropoff()
+{
+    return State::FindObject;
+}
 
 // State DoOpenGripper()
 // {
 //     return State::FindObject;
 // }
+
+auto MakeConveyorCollisionObject() -> moveit_msgs::CollisionObject
+{
+    moveit_msgs::CollisionObject conveyor;
+    conveyor.header.frame_id = "base_footprint";
+    conveyor.header.stamp = ros::Time::now();
+
+    conveyor.id = "conveyor";
+
+    double height = 0.64;
+
+    shape_msgs::SolidPrimitive conveyor_shape;
+    conveyor_shape.type = shape_msgs::SolidPrimitive::BOX;
+    conveyor_shape.dimensions.resize(3);
+    conveyor_shape.dimensions[shape_msgs::SolidPrimitive::BOX_X] = 0.26;
+    conveyor_shape.dimensions[shape_msgs::SolidPrimitive::BOX_Y] = 2.14;
+    conveyor_shape.dimensions[shape_msgs::SolidPrimitive::BOX_Z] = height;
+    conveyor.primitives.push_back(conveyor_shape);
+
+    geometry_msgs::Pose conveyor_pose;
+    conveyor_pose.position.x = 0.60; //0.62;
+    conveyor_pose.position.y = 0.0;
+    conveyor_pose.position.z = 0.5 * height;
+    conveyor_pose.orientation.w = 1.0;
+    conveyor.primitive_poses.push_back(conveyor_pose);
+
+    conveyor.operation = moveit_msgs::CollisionObject::ADD;
+
+    return conveyor;
+}
 
 int main(int argc, char* argv[])
 {
@@ -166,6 +198,9 @@ int main(int argc, char* argv[])
     ros::Subscriber pose_sub = nh.subscribe("ar_pose_marker", 1000, ARPoseCallback);
     fillGraspPoses();
 
+    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
+
     ROS_INFO("Create Move Group");
 //    MoveGroup::Options ops(g_planning_group);
     g_move_group.reset(new MoveGroup(g_planning_group, 
@@ -173,7 +208,7 @@ int main(int argc, char* argv[])
 
     g_move_group->setPlanningTime(30.0);
     g_move_group->setPlannerId("right_arm[arastar_bfs_manip]");
-    g_move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
+    g_move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0); // change this later maybe
 
     MachState states[(int)State::Count];
     states[(int)State::LocalizeConveyor].pump = DoLocalizeConveyor;
@@ -182,7 +217,7 @@ int main(int argc, char* argv[])
     states[(int)State::ExecutePickup].pump = DoMoveToGrasp;
     states[(int)State::GraspObject].pump = DoGraspObject;
     // states[(int)State::CloseGripper].pump = DoCloseGripper;
-    // states[(int)State::ExecuteDropoff].pump = DoExecuteDropoff;
+    states[(int)State::ExecuteDropoff].pump = DoExecuteDropoff;
     // states[(int)State::OpenGripper].pump = DoOpenGripper;
 
     ros::Rate loop_rate(5.0);
