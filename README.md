@@ -15,7 +15,9 @@ Pick-and-place simulation for wheeled walker robot.
 - [x] Walker sbpl planning interface config
 - [x] Walker move_group.launch
 - [x] Conveyor belt simulation: use ar_tag tracking
-- [ ] Implement pick-and-place for walker
+- [x] Import nrw_demo pipeline
+- [ ] Specify home positions (above the conveyor?)
+- [ ] Enable both arms: add left arm picks
 
 ## Troubleshooting
 
