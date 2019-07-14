@@ -65,6 +65,24 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        ar_marker_0:
+          Value: true
+        ar_marker_1:
+          Value: true
+        ar_marker_2:
+          Value: true
+        ar_marker_3:
+          Value: true
+        ar_marker_4:
+          Value: true
+        ar_marker_5:
+          Value: true
+        ar_marker_6:
+          Value: true
+        ar_marker_7:
+          Value: true
+        ar_marker_8:
+          Value: true
         back_wheel_link:
           Value: false
         base_footprint:
@@ -79,8 +97,6 @@ Visualization Manager:
           Value: false
         front_wheel_link:
           Value: false
-        goal:
-          Value: true
         head_l1:
           Value: false
         head_l2:
@@ -125,8 +141,6 @@ Visualization Manager:
           Value: false
         left_wheel_link:
           Value: false
-        map:
-          Value: true
         odom_combined:
           Value: true
         planar_1:
@@ -180,6 +194,24 @@ Visualization Manager:
       Show Names: true
       Tree:
         base_footprint:
+          ar_marker_0:
+            {}
+          ar_marker_1:
+            {}
+          ar_marker_2:
+            {}
+          ar_marker_3:
+            {}
+          ar_marker_4:
+            {}
+          ar_marker_5:
+            {}
+          ar_marker_6:
+            {}
+          ar_marker_7:
+            {}
+          ar_marker_8:
+            {}
           dummy_base:
             planar_1:
               planar_2:
@@ -246,7 +278,7 @@ Visualization Manager:
                                     right_thumb_l1:
                                       right_thumb_l2:
                                         {}
-          goal:
+          odom_combined:
             {}
       Update Interval: 0
       Value: true
@@ -1148,10 +1180,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.479796588
+      Pitch: 0.324796647
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.20556641
+      Yaw: 5.31056643
     Saved: ~
 Window Geometry:
   Displays:

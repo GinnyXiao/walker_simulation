@@ -4,7 +4,7 @@ Pick-and-place simulation for wheeled walker robot.
 
 ## Getting Started
 
-1. Launch move_group: ```roslaunch walker_moveit_config move_group.launch```
+1. Launch move_group: ```roslaunch walker_simulation move_group.launch```
 2. Run Rviz and use this config: ```walker_simulation.rviz```
 3. Run conveyor simulator: ```rosrun walker_simulation conveyor_simulator```
 4. Run demo: ```rosrun walker_simulation walker_simulation_node```
@@ -14,10 +14,11 @@ Pick-and-place simulation for wheeled walker robot.
 - [ ] Gazebo simulation: having trouble with the controller_manager
 - [x] Walker sbpl planning interface config
 - [x] Walker move_group.launch
-- [x] Conveyor belt simulation: use ar_tag tracking
+- [x] Conveyor belt simulation: use fake ar_tag tracking
 - [x] Import nrw_demo pipeline
-- [ ] Specify home positions (above the conveyor?)
+- [ ] Specify home positions (instead of above the conveyor?)
 - [ ] Enable both arms: add left arm picks
+- [ ] Add grasping movements for hands 
 
 ## Troubleshooting
 
