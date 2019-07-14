@@ -72,10 +72,11 @@ struct PickMachine
     // std::unique_ptr<GripperCommandActionClient> gripper_client;
 
     std::atomic<bool> goal_ready;
-
     ros::Time time_at_execute;
 
     double conveyor_speed;
+
+    std::vector<double> home_position;
 
     geometry_msgs::PoseStamped grasp_pose_goal_base_footprint;
     geometry_msgs::PoseStamped grasp_pose_goal;
@@ -97,7 +98,7 @@ struct WorldState
 // truly global
 std::unique_ptr<tf::TransformBroadcaster> g_broadcaster;
 std::unique_ptr<tf::TransformListener> g_listener;
-const double g_time_to_reach_grasp = 4.2;
+const double g_time_to_reach_grasp = 20;
 WorldState g_world_state;
 
 bool TryHardTransformVector(
@@ -288,6 +289,41 @@ void DoLocalizeConveyor()
     // ...position would be nice too but I won't cry about it
 }
 
+bool ResetArms(PickMachine* l_mach, PickMachine* r_mach)
+{
+    {
+        auto v = l_mach->home_position;
+        for (auto& value : v) {
+            value *= M_PI / 180.0;
+        }
+
+        l_mach->move_group->setJointValueTarget(v);
+
+        auto err = l_mach->move_group->move();
+        if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+            ROS_ERROR("Failed to move arm to grasp pose");
+            return false;
+        }
+    }
+
+    {
+        auto v = r_mach->home_position;
+        for (auto& value : v) {
+            value *= M_PI / 180.0;
+        }
+
+        r_mach->move_group->setJointValueTarget(v);
+
+        auto err = r_mach->move_group->move();
+        if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+            ROS_ERROR("Failed to move arm to grasp pose");
+            return false;
+        }
+    }
+
+    return true;
+}
+
 PickState DoPrepareGripper(PickMachine* mach)
 {
     return PickState::WaitForGoal;
@@ -297,7 +333,7 @@ PickState DoWaitForGoal(PickMachine* mach)
 {
     while (ros::ok()) {
         if (mach->goal_ready) {
-            ROS_INFO("Goal ready!");
+            mach->goal_ready = false; // consume goal
             return PickState::ExecutePickup;
         }
         ros::Duration(1.0).sleep();
@@ -322,6 +358,7 @@ bool SendGoal(PickMachine* mach, const geometry_msgs::PoseStamped& grasp_pose_go
     mach->conveyor_speed = conveyor_speed;
 
     mach->goal_ready = true;
+    return true;
 }
 
 // TODO:
@@ -339,7 +376,10 @@ bool TryPickObject(PickMachine* mach, bool left)
     // select an object
     for (auto& object : g_world_state.objects) {
         // skip claimed objects
-        if (object.claimed) continue;
+        if (object.claimed){
+            ROS_INFO(" -> Skip claimed object '%u'", object.id);
+            continue;
+        }
 
         geometry_msgs::Vector3Stamped vel;
         // have a good velocity estimate
@@ -356,7 +396,10 @@ bool TryPickObject(PickMachine* mach, bool left)
     }
     UnlockWorldState(&g_world_state);
 
-    if (!found) return false; // no object with a reasonable estimate
+    if (!found) {
+        ROS_INFO("  No reasonable estimates of object velocity");
+        return false; // no object with a reasonable estimate
+    }
 
     // OLD FUNCTIONALITY: get 6 samples, evenly spaced every 0.2 seconds and
     // compute the average velocity at any point in the path
@@ -372,6 +415,9 @@ bool TryPickObject(PickMachine* mach, bool left)
     // Construct gripper goal //
     ////////////////////////////
 
+    ROS_INFO("Construct gripper goal");
+    ROS_INFO("  Object position = (%f, %f, %f)", object_pose.pose.position.x, object_pose.pose.position.y, object_pose.pose.position.z);
+
     // how far the object will have moved during the time it takes to close the
     // gripper
     auto g_grasp_offset = g_time_to_reach_grasp * conveyor_speed;
@@ -382,29 +428,43 @@ bool TryPickObject(PickMachine* mach, bool left)
     grasp_pose_goal_local.header.frame_id = "base_footprint";
 
     // final pose of the object after speed estimation + minor adjustment
-    grasp_pose_goal_local.pose.position.x = object_pose.pose.position.x + 0.01;
+    grasp_pose_goal_local.pose.position.x = object_pose.pose.position.x; // + 0.01;
 
     // final pose of object after speed estimation + distance object will travel
     // during arm execution
-    grasp_pose_goal_local.pose.position.y = object_pose.pose.position.y - g_grasp_offset;
+    grasp_pose_goal_local.pose.position.y = object_pose.pose.position.y + g_grasp_offset;
 
     // hardcoded :)
-    grasp_pose_goal_local.pose.position.z = 0.73; //+= 0.05;
-    grasp_pose_goal_local.pose.orientation.x = grasp_pose_goal_local.pose.orientation.y = 0.0;
-    grasp_pose_goal_local.pose.orientation.z = grasp_pose_goal_local.pose.orientation.w = 0.5 * sqrt(2.0);
+    grasp_pose_goal_local.pose.position.z = 0.8; //+= 0.05;
+    // grasp_pose_goal_local.pose.orientation.x = grasp_pose_goal_local.pose.orientation.y = 0.0;
+    // grasp_pose_goal_local.pose.orientation.z = grasp_pose_goal_local.pose.orientation.w = 0.5 * sqrt(2.0);
+    grasp_pose_goal_local.pose.orientation.x = 0.1472033;
+    grasp_pose_goal_local.pose.orientation.y = 0.2944066;
+    grasp_pose_goal_local.pose.orientation.z = 0.0;
+    grasp_pose_goal_local.pose.orientation.w = 0.9442754;
 
     // limit the grasp goal to be reachable (not too far ahead of the robot)
     if (!left) {
-        grasp_pose_goal_local.pose.position.y = std::min(grasp_pose_goal_local.pose.position.y, -0.05);
+        grasp_pose_goal_local.pose.position.y = std::min(grasp_pose_goal_local.pose.position.y, -0.4);
     } else {
         grasp_pose_goal_local.pose.position.y = std::min(grasp_pose_goal_local.pose.position.y, 0.35);
     }
 
-    // should care about the gripping time
+    // check if the object will be unreachable by the time we get there
+    ROS_INFO("Picking at x: %f ", grasp_pose_goal_local.pose.position.x);
     ROS_INFO("Picking at y: %f ", grasp_pose_goal_local.pose.position.y);
-    if (grasp_pose_goal_local.pose.position.y < -0.4) {
-        ROS_INFO("Sorry! that was too fast");
-        return false;
+    ROS_INFO("Picking at z: %f ", grasp_pose_goal_local.pose.position.z);
+    if (!left) {
+        if (grasp_pose_goal_local.pose.position.y < -0.6) {
+            // TODO: add this to criteria for selecting object
+            ROS_INFO(" -> Sorry! that was too fast");
+            return false;
+        }
+    } else {
+        if (grasp_pose_goal_local.pose.position.y < 0.05) {
+            ROS_INFO(" -> Sorry! that was too fast");
+            return false;
+        }
     }
     // grasp_pose_goal_local.pose.position.y = std::max(grasp_pose_goal_local.pose.position.y, -0.35);
 
@@ -432,6 +492,7 @@ PickState DoMoveToGrasp(PickMachine* mach)
     auto err = mach->move_group->move();
     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
         ROS_ERROR("Failed to move arm to grasp pose");
+        mach->goal_ready = false;
         return PickState::WaitForGoal;
     } 
     
@@ -441,11 +502,22 @@ PickState DoMoveToGrasp(PickMachine* mach)
 
 PickState DoGraspObject(PickMachine* mach)
 {
-    ROS_INFO("Going to measure distance");
-    double buffer_time = 0.05 / mach->conveyor_speed;
+    double buffer_time = 0.05 / std::fabs(mach->conveyor_speed);
+
+    ROS_INFO("Wait an additional %f", buffer_time);
+
+    // how long it actually took to plan and execute the arm motion
     ros::Duration execution_duration = ros::Time::now() - mach->time_at_execute;
-    double wait_time = std::max(g_time_to_reach_grasp - execution_duration.toSec(), 0.0);
+
+    double wait_time = std::max(/*g_time_to_reach_grasp*/ mach->time_to_reach_grasp - execution_duration.toSec(), 0.0);
     wait_time += buffer_time;
+
+    if (wait_time < 0.0) {
+        ROS_WARN("It actually took us %f seconds to reach the grasp pose", execution_duration.toSec());
+        wait_time = std::max(wait_time, 0.0);
+    }
+
+    wait_time = std::min(wait_time, 10.0); // hurp durp, take this from conveyor length / conveyor_speed
 
     ROS_INFO("Waiting before grasp for %f secs", wait_time);
     ros::Duration(wait_time).sleep();
@@ -460,6 +532,17 @@ PickState DoCloseGripper(PickMachine* mach)
 
 PickState DoExecuteDropoff(PickMachine* mach)
 {
+    // auto v = mach->home_position;
+    // for (auto& value : v) {
+    //     value *= M_PI / 180.0;
+    // }
+    // mach->move_group->setJointValueTarget(v);
+
+    // auto err = mach->move_group->move();
+    // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+    //     ROS_ERROR("Failed to move arm to grasp pose");
+    // }
+
     return PickState::OpenGripper;
 }
 
@@ -609,10 +692,13 @@ int main(int argc, char* argv[])
                 "right_arm", boost::shared_ptr<tf::Transformer>(), ros::WallDuration(25.0)));
     // right_machine.gripper_client.reset(new GripperCommandActionClient(
     //             "r_gripper_controller/gripper_action"));
-    right_machine.move_group->setPlanningTime(10.0);
+    right_machine.move_group->setPlanningTime(30.0);
     right_machine.move_group->setPlannerId("right_arm[arastar_bfs_manip]");
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
+    // right_machine.home_position = {
+    //     -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
+    // };
 
     // ROS_INFO("Create Right Gripper Action Client");
     // right_machine.gripper_client.reset(new GripperCommandActionClient(
