@@ -17,16 +17,16 @@ int main(int argc, char* argv[])
     auto frame_id = "base_footprint";
     auto conveyor_length = 0.26;
     auto conveyor_width = 2.14;
-    auto conveyor_height = 0.64;
+    auto conveyor_height = 0.70; // 0.64;
 
-    auto conveyor_pos_x = 0.40;
+    auto conveyor_pos_x = 0.25;
 
     // the right-hand side of the conveyor aligns with center of the robot
-    auto conveyor_pos_y = 0.5 * conveyor_width - 0.4;
+    auto conveyor_pos_y = 0.5 * conveyor_width - 0.5; 
 
     auto conveyor_pos_z = 0.5 * conveyor_height;
 
-    auto conveyor_speed = 0.3;
+    auto conveyor_speed = 0.03;
 
     // width of the area at the end of the conveyor where objects are loaded
     // and are not yet visible to the robot
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
         }
 
         // spawn a new ar marker
-        if (now > last_marker_spawn + ros::Duration(2.0)) {
+        if (now > last_marker_spawn + ros::Duration(8.0)) {
             ar_track_alvar_msgs::AlvarMarker marker;
 
             // create a new id for this marker
