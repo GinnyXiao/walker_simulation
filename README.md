@@ -9,7 +9,7 @@ Pick-and-place simulation for wheeled walker robot.
 3. Run conveyor simulator: ```rosrun walker_simulation conveyor_simulator```
 4. Run demo: ```rosrun walker_simulation walker_simulation_node```
 
-## TODO 
+## TODO
 
 - [ ] Gazebo simulation: having trouble with the controller_manager
 - [x] Walker sbpl planning interface config
@@ -18,9 +18,10 @@ Pick-and-place simulation for wheeled walker robot.
 - [x] Import nrw_demo pipeline
 - [ ] Specify home positions (instead of above the conveyor?)
 - [ ] Enable both arms: add left arm picks
-- [ ] Add grasping movements for hands 
+- [ ] Change the tip link to palm link: plan the center of the palm to grasp pose
+- [ ] Add grasping movements for hands
 
 ## Troubleshooting
 
-- When running ```demo.launch```, error message ```[ERROR]: Unable to connect to move_group action server 'move_group' within allotted time (30s)``` popped out: move_group hasn't been fully launched before connecting to rviz. Fix: Wait for a moment, restart rviz. 
+- When running ```demo.launch```, error message ```[ERROR]: Unable to connect to move_group action server 'move_group' within allotted time (30s)``` popped out: move_group hasn't been fully launched before connecting to rviz. Fix: Wait for a moment, restart rviz.
 - Error: ```TF has no common time between '/odom_combined' and 'base_footprint'```. Run ```rosrun tf static_transformublisher 0 0 0 0 0 0 base_footprint odom_combined 13```, assume the robot is static.
