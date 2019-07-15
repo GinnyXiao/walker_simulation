@@ -95,21 +95,6 @@ right_arm:
 #       graph_config: LeftArmAndTorsoManipLatticeConfig
 #       shortcut_config: JointSpaceShortcutConfig
 
-# right_arm:
-#  planner_configs: 
-#     search: arastar
-#     epsilon: 100.0
-#     repair_time: 1.0
-#     heuristic: bfs
-#     bfs_res_x: 0.015
-#     bfs_res_y: 0.015
-#     bfs_res_z: 0.015
-#     bfs_sphere_radius: 0.02
-#     shortcutter: joint_space
-#     shortcut_path: true
-#     interpolate_path: true
- 
-
 #base:
 #  planner_configs: {}
 #
@@ -173,12 +158,10 @@ graph_configs:
     use_rpy_snap_mprim: true
     use_xyzrpy_snap_mprim: true
     use_short_dist_mprims: true
-    xyz_snap_dist_thresh: 0.0 #0.2
-    rpy_snap_dist_thresh: 0.04 #0.5
-    xyzrpy_snap_dist_thresh: 0.2 #1.0
+    xyz_snap_dist_thresh: 0.0 
+    rpy_snap_dist_thresh: 0.04 
+    xyzrpy_snap_dist_thresh: 0.2 
     short_dist_mprims_thresh: 0.4
-
-
 
 # graph_configs:
 #   # right_arm
