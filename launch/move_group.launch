@@ -79,7 +79,7 @@
     <!-- <param name="capabilities" value="$(arg capabilities)"/> -->
     <param name="disable_capabilities" value="$(arg disable_capabilities)"/>
     <param name="capabilities" value="move_group/MoveGroupCartesianPathService
-                                      move_group/MoveGroupExecuteService
+                                      move_group/MoveGroupExecuteTrajectoryAction
                                       move_group/MoveGroupKinematicsService
                                       move_group/MoveGroupMoveAction
                                       move_group/MoveGroupPickPlaceAction
@@ -97,5 +97,5 @@
     <param name="planning_scene_monitor/publish_state_updates" value="$(arg publish_monitored_planning_scene)" />
     <param name="planning_scene_monitor/publish_transforms_updates" value="$(arg publish_monitored_planning_scene)" />
   </node>
-
+  
 </launch>

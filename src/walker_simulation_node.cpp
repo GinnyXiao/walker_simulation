@@ -14,6 +14,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include <Eigen/Dense>
+// #include <smpl/ros/planner_interface.h>
 
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <ar_track_alvar_msgs/AlvarMarker.h>
@@ -473,7 +474,7 @@ PickState DoWaitForGoal(PickMachine* mach)
     }
     while (ros::ok()) {
         if (mach->goal_ready) {
-            mach->goal_ready = false; // consume goal
+            // mach->goal_ready = false; // consume goal
             return PickState::PlanPickup;
         }
         ros::Duration(1.0).sleep();
@@ -769,6 +770,7 @@ PickState DoPlanPickup(PickMachine* mach)
 
     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
         ROS_ERROR("Failed to plan to grasp pose");
+        mach->goal_ready = false;
         return PickState::WaitForGoal;
     }
 
@@ -790,6 +792,7 @@ PickState DoExecutePickup(PickMachine* mach)
 
     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
         ROS_ERROR("Failed to move arm to grasp pose");
+        mach->goal_ready = false;
         return PickState::WaitForGoal;
     }
 
@@ -903,6 +906,7 @@ PickState DoExecuteDropoff(PickMachine* mach)
 
 PickState DoOpenGripper(PickMachine* mach)
 {
+    mach->goal_ready = false;
     return PickState ::WaitForGoal;
 }
 
@@ -942,12 +946,12 @@ auto MakeConveyorCollisionObject() -> moveit_msgs::CollisionObject
 {
      moveit_msgs::CollisionObject conveyor;
 
-    double height = 0.64 + ADJUST;
+    double height = 0.7; //0.64 + ADJUST;
 
     geometry_msgs::PoseStamped p;
     p.header.frame_id = g_robot_frame;
     p.header.stamp = ros::Time(0); //ros::Time::now();
-    p.pose.position.x = 0.40; //0.62;
+    p.pose.position.x = 0.25;
     p.pose.position.y = 0.0;
     p.pose.position.z = 0.5 * height;
     p.pose.orientation.w = 1.0;
@@ -1142,7 +1146,7 @@ int main(int argc, char* argv[])
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
     right_machine.min_workspace_y = -0.50;
-    right_machine.max_workspace_y = -0.40; //-0.05;
+    right_machine.max_workspace_y = -0.4;
     // right_machine.home_position = {
     //     //-94.13, 19.62, -68.78, -102.20, 359.0, -114.55, 359.00
     //     -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
@@ -1220,6 +1224,13 @@ int main(int argc, char* argv[])
 
     ros::Rate loop_rate(1.0);   
     while (ros::ok) {
+        if (right_machine.goal_ready){
+            tf::StampedTransform transform;
+            transform.frame_id_ = "base_footprint";
+            transform.child_frame_id_ = "predicted_pose";
+            tf::poseMsgToTF(right_machine.grasp_pose_goal.pose, transform);
+            g_broadcaster->sendTransform(transform);
+        }
         if (right_machine.curr_state == PickState::WaitForGoal){
             TryPickObject(&right_machine, false);
         }
