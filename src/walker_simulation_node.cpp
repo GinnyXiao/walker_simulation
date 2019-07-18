@@ -14,7 +14,6 @@
 #include <boost/circular_buffer.hpp>
 
 #include <Eigen/Dense>
-// #include <smpl/ros/planner_interface.h>
 
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <ar_track_alvar_msgs/AlvarMarker.h>
@@ -400,9 +399,9 @@ bool ResetArms(PickMachine* l_mach, PickMachine* r_mach)
 {
     {
         auto v = l_mach->home_position;
-        for (auto& value : v) {
-            value *= M_PI / 180.0;
-        }
+        // for (auto& value : v) {
+        //     value *= M_PI / 180.0;
+        // }
 
         l_mach->move_group->setJointValueTarget(v);
 
@@ -451,6 +450,43 @@ bool ResetArms(PickMachine* l_mach, PickMachine* r_mach)
             }
         }
     }
+
+    return true;
+}
+
+bool ResetArm(PickMachine* mach)
+{
+    auto v = mach->home_position;
+    // for (auto& value : v) {
+    //     value *= M_PI / 180.0;
+    // }
+
+    mach->move_group->setJointValueTarget(v);
+
+    // moveit::planning_interface::MoveGroup::Plan plan;
+    // auto err = mach->move_group->plan(plan);
+    auto err = mach->move_group->move();
+    if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+        ROS_WARN("Failed to plan to home position");
+        return false;
+    }
+
+    // control_msgs::FollowJointTrajectoryGoal goal;
+    // goal.trajectory = plan.trajectory_.joint_trajectory;
+
+    // auto state = mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
+    // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
+    //     ROS_ERROR("Failed to move to execute trajectory to home position");
+    //     return false;
+    // }
+
+    // auto err = mach->move_group->execute(plan);
+
+    // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+    //     ROS_ERROR("Failed to move arm to home position");
+    //     mach->goal_ready = false;
+    //     return PickState::WaitForGoal;
+    // }
 
     return true;
 }
@@ -907,30 +943,40 @@ PickState DoExecuteDropoff(PickMachine* mach)
 PickState DoOpenGripper(PickMachine* mach)
 {
     mach->goal_ready = false;
-    return PickState ::WaitForGoal;
+    return PickState ::MoveToHome;
 }
 
 PickState DoMoveToHome(PickMachine* mach)
 {
-    // WaitForMoveGroup();
-    // g_move_group_busy = true;
+    WaitForMoveGroup();
+    g_move_group_busy = true;
 
-    // auto v = mach->home_position;
+    auto v = mach->home_position;
     // for (auto& value : v) {
     //     value *= M_PI / 180.0;
     // }
 
-    // mach->move_group->setJointValueTarget(v);
+    mach->move_group->setJointValueTarget(v);
+
+    auto err = mach->move_group->move();
 
     // MoveGroup::Plan home_plan;
     // auto err = mach->move_group->plan(home_plan);
-    // if (err != moveit_msgs::MoveItErrorCodes::SUCCESS) {
-    //     // You got us in here, did you have a plan for getting out?
-    //     // we should literally execute the pickup plan in reverse ...probably...
-    //     ROS_ERROR("PRETTY BAD! GOING NOWHERE!");
+    if (err != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+        // You got us in here, did you have a plan for getting out?
+        // we should literally execute the pickup plan in reverse ...probably...
+        ROS_ERROR("PRETTY BAD! GOING NOWHERE!");
+    }
+
+    // auto err = mach->move_group->execute(plan);
+
+    // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+    //     ROS_ERROR("Failed to move arm to home position");
+    //     mach->goal_ready = false;
+    //     return PickState::WaitForGoal;
     // }
 
-    // g_move_group_busy = false;
+    g_move_group_busy = false;
 
     // control_msgs::FollowJointTrajectoryGoal goal;
     // goal.trajectory = home_plan.trajectory_.joint_trajectory;
@@ -1147,10 +1193,10 @@ int main(int argc, char* argv[])
     right_machine.move_group->startStateMonitor();
     right_machine.min_workspace_y = -0.50;
     right_machine.max_workspace_y = -0.4;
-    // right_machine.home_position = {
-    //     //-94.13, 19.62, -68.78, -102.20, 359.0, -114.55, 359.00
-    //     -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
-    // };
+    right_machine.home_position = {
+        // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
+        -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+    };
     // right_machine.dropoff_position = {
     //     //-94.13, 19.62, -68.78, -102.20, 359.0, -114.55, 359.00
     //     -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
@@ -1221,6 +1267,7 @@ int main(int argc, char* argv[])
 
     DoLocalizeConveyor();
     // ResetArms(&left_machine, &right_machine);
+    ResetArm(&right_machine);
 
     ros::Rate loop_rate(1.0);   
     while (ros::ok) {
