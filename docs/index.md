@@ -2,6 +2,13 @@
 
 ## Progress
 
+July 18 - Can grasp multiple moving objects
+
+- Added home positions
+- Added conveyor belt
+- Fixed snap generation problem - reconfigured IK client
+- Adjusted workspace
+
 July 14 - Working nrw_demo pipeline
 
 - Planning for moving object 1

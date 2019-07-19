@@ -20,6 +20,7 @@ Pick-and-place simulation for wheeled walker robot.
 - [ ] Enable both arms: add left arm picks
 - [ ] Change the tip link to palm link: plan the center of the palm to grasp pose
 - [ ] Add grasping movements for hands
+- [ ] Take care not to topple the objects that the robot is not grasping 
 
 ## Troubleshooting
 
