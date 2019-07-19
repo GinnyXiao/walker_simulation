@@ -457,14 +457,12 @@ bool ResetArms(PickMachine* l_mach, PickMachine* r_mach)
 bool ResetArm(PickMachine* mach)
 {
     auto v = mach->home_position;
-    // for (auto& value : v) {
-    //     value *= M_PI / 180.0;
-    // }
 
     mach->move_group->setJointValueTarget(v);
 
     // moveit::planning_interface::MoveGroup::Plan plan;
     // auto err = mach->move_group->plan(plan);
+
     auto err = mach->move_group->move();
     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
         ROS_WARN("Failed to plan to home position");
@@ -478,14 +476,6 @@ bool ResetArm(PickMachine* mach)
     // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
     //     ROS_ERROR("Failed to move to execute trajectory to home position");
     //     return false;
-    // }
-
-    // auto err = mach->move_group->execute(plan);
-
-    // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
-    //     ROS_ERROR("Failed to move arm to home position");
-    //     mach->goal_ready = false;
-    //     return PickState::WaitForGoal;
     // }
 
     return true;
@@ -582,13 +572,14 @@ bool ComputeGraspGoal(
 
     // hardcoded :)
     // grasp_pose_goal->pose.position.z = 0.73 + ADJUST - 0.01; //+= 0.05;
-    // grasp_pose_goal->pose.orientation.x = grasp_pose_goal->pose.orientation.y = 0.0;
-    // grasp_pose_goal->pose.orientation.z = grasp_pose_goal->pose.orientation.w = 0.5 * sqrt(2.0);
-    grasp_pose_goal->pose.position.z = 0.8;
-    grasp_pose_goal->pose.orientation.x = 0.1472033;
-    grasp_pose_goal->pose.orientation.y = 0.2944066;
+    grasp_pose_goal->pose.orientation.x = grasp_pose_goal->pose.orientation.y = 0.0;
     grasp_pose_goal->pose.orientation.z = 0.0;
-    grasp_pose_goal->pose.orientation.w = 0.9442754;
+    grasp_pose_goal->pose.orientation.w = 1; // 0.5 * sqrt(2.0);
+    grasp_pose_goal->pose.position.z = 0.8;
+    // grasp_pose_goal->pose.orientation.x = 0.1472033;
+    // grasp_pose_goal->pose.orientation.y = 0.2944066;
+    // grasp_pose_goal->pose.orientation.z = 0.0;
+    // grasp_pose_goal->pose.orientation.w = 0.9442754;
 
     // limit the grasp goal to be reachable (not too far ahead of the robot)
     grasp_pose_goal->pose.position.y = std::min(grasp_pose_goal->pose.position.y, mach->max_workspace_y);
@@ -868,22 +859,22 @@ PickState DoMoveToGrasp(PickMachine* mach)
 
 PickState DoGraspObject(PickMachine* mach)
 {
-    double buffer_time = 0.05 / std::fabs(mach->conveyor_speed);
+    //double buffer_time = 0.05 / std::fabs(mach->conveyor_speed);
 
-    ROS_INFO("Wait an additional %f", buffer_time);
+   // ROS_INFO("Wait an additional %f", buffer_time);
 
     // how long it actually took to plan and execute the arm motion
     ros::Duration execution_duration = ros::Time::now() - mach->time_at_execute;
 
-    double wait_time = std::max(/*g_time_to_reach_grasp*/ mach->time_to_reach_grasp - execution_duration.toSec(), 0.0);
-    wait_time += buffer_time;
+    double wait_time = std::max(/*g_time_to_reach_grasp*/ mach->time_to_grasp - execution_duration.toSec(), 0.0);
+    //wait_time += buffer_time;
 
     if (wait_time < 0.0) {
         ROS_WARN("It actually took us %f seconds to reach the grasp pose", execution_duration.toSec());
         wait_time = std::max(wait_time, 0.0);
     }
 
-    wait_time = std::min(wait_time, 10.0); // hurp durp, take this from conveyor length / conveyor_speed
+    wait_time = std::min(wait_time, 20.0); // hurp durp, take this from conveyor length / conveyor_speed
 
     ROS_INFO("Waiting before grasp for %f secs", wait_time);
     ros::Duration(wait_time).sleep();
@@ -902,9 +893,6 @@ PickState DoPlanDropoff(PickMachine* mach)
     g_move_group_busy = true;
 
     auto v = mach->dropoff_position;
-    for (auto& value : v) {
-        value *= M_PI / 180.0;
-    }
 
     mach->move_group->setJointValueTarget(v);
 
@@ -952,9 +940,6 @@ PickState DoMoveToHome(PickMachine* mach)
     g_move_group_busy = true;
 
     auto v = mach->home_position;
-    // for (auto& value : v) {
-    //     value *= M_PI / 180.0;
-    // }
 
     mach->move_group->setJointValueTarget(v);
 
@@ -962,19 +947,17 @@ PickState DoMoveToHome(PickMachine* mach)
 
     // MoveGroup::Plan home_plan;
     // auto err = mach->move_group->plan(home_plan);
-    if (err != moveit_msgs::MoveItErrorCodes::SUCCESS) {
-        // You got us in here, did you have a plan for getting out?
-        // we should literally execute the pickup plan in reverse ...probably...
-        ROS_ERROR("PRETTY BAD! GOING NOWHERE!");
-    }
-
-    // auto err = mach->move_group->execute(plan);
-
-    // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
-    //     ROS_ERROR("Failed to move arm to home position");
-    //     mach->goal_ready = false;
-    //     return PickState::WaitForGoal;
+    // if (err != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+    //     // You got us in here, did you have a plan for getting out?
+    //     // we should literally execute the pickup plan in reverse ...probably...
+    //     ROS_ERROR("PRETTY BAD! GOING NOWHERE!");
     // }
+
+    if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+        ROS_ERROR("Failed to move arm to home position");
+        mach->goal_ready = false;
+        return PickState::WaitForGoal;
+    }
 
     g_move_group_busy = false;
 
@@ -1111,7 +1094,7 @@ int main(int argc, char* argv[])
     // ph.param<std::string>("r_arm_action_name", r_arm_action_name, "r_arm_controller");
 
     double allowed_planning_time;
-    ph.param("allowed_planning_time", allowed_planning_time, 30.0);
+    ph.param("allowed_planning_time", allowed_planning_time, 3.0);
 
     ros::AsyncSpinner spinner(2);
     spinner.start();
@@ -1191,16 +1174,16 @@ int main(int argc, char* argv[])
     right_machine.move_group->setPlannerId("right_arm[arastar_bfs_manip]");
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
-    right_machine.min_workspace_y = -0.50;
-    right_machine.max_workspace_y = -0.4;
+    right_machine.min_workspace_y = -0.60;
+    right_machine.max_workspace_y = -0.2;
     right_machine.home_position = {
         // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
         -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
     };
-    // right_machine.dropoff_position = {
-    //     //-94.13, 19.62, -68.78, -102.20, 359.0, -114.55, 359.00
-    //     -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
-    // };
+    right_machine.dropoff_position = {
+        // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
+        -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+    };
 
     // ROS_INFO("Create Right Gripper Command Action Client");
     // right_machine.gripper_command_client.reset(new GripperCommandActionClient(
@@ -1268,6 +1251,9 @@ int main(int argc, char* argv[])
     DoLocalizeConveyor();
     // ResetArms(&left_machine, &right_machine);
     ResetArm(&right_machine);
+
+    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
 
     ros::Rate loop_rate(1.0);   
     while (ros::ok) {

@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 
     auto conveyor_pos_z = 0.5 * conveyor_height;
 
-    auto conveyor_speed = 0.03;
+    auto conveyor_speed = 0.1;
 
     // width of the area at the end of the conveyor where objects are loaded
     // and are not yet visible to the robot
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
         }
 
         // spawn a new ar marker
-        if (now > last_marker_spawn + ros::Duration(80.0)) {
+        if (now > last_marker_spawn + ros::Duration(20.0)) {
             ar_track_alvar_msgs::AlvarMarker marker;
 
             // create a new id for this marker
