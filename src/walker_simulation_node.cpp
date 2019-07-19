@@ -1174,8 +1174,8 @@ int main(int argc, char* argv[])
     right_machine.move_group->setPlannerId("right_arm[arastar_bfs_manip]");
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
-    right_machine.min_workspace_y = -0.60;
-    right_machine.max_workspace_y = -0.2;
+    right_machine.min_workspace_y = -0.450;
+    right_machine.max_workspace_y = -0.27;
     right_machine.home_position = {
         // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
         -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
