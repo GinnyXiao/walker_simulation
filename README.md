@@ -45,3 +45,4 @@ Pick-and-place simulation for wheeled walker robot.
 - When running ```demo.launch```, error message ```[ERROR]: Unable to connect to move_group action server 'move_group' within allotted time (30s)``` popped out: move_group hasn't been fully launched before connecting to rviz. Fix: Wait for a moment, restart rviz. 
 - Error: ```TF has no common time between '/odom_combined' and 'base_footprint'```. Run ```rosrun tf static_transform_publisher 0 0 0 0 0 0 base_footprint odom_combined 13```, assume the robot is static.
 - Enabled the snaps, but the planner was not using it: snap motion primitives were not being generated because no IK solution found! Change kinematic.yaml parameters.
+

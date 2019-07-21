@@ -2,6 +2,11 @@
 
 ## Progress
 
+July 20 - Both arms are enabled
+
+- Adjusted planning config for the left arm
+- Added two-arm working pipeline
+
 July 18 - Can grasp multiple moving objects
 
 - Added home positions
