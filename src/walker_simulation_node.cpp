@@ -93,7 +93,8 @@ struct PickMachine
 
     ros::Time time_at_execute;
 
-    double time_to_reach_grasp = 10; //4.2;
+    // an upper bound on the time to plan and execute the motion to a grasp location
+    double time_to_reach_grasp = 4.2;
 
     // NOTE: workspace boundaries are w.r.t. the tool frame
     double min_workspace_y;
@@ -133,7 +134,6 @@ const char* g_planning_frame = "odom_combined"; // TODO: take this from the Move
 const char* g_robot_frame = "base_footprint";
 std::atomic<bool> g_move_group_busy(false);
 
-// an upper bound on the time to plan and execute the motion to a grasp location
 WorldState g_world_state;
 
 void WaitForMoveGroup()
@@ -399,55 +399,61 @@ bool ResetArms(PickMachine* l_mach, PickMachine* r_mach)
 {
     {
         auto v = l_mach->home_position;
-        // for (auto& value : v) {
-        //     value *= M_PI / 180.0;
-        // }
 
         l_mach->move_group->setJointValueTarget(v);
-
         {
-            moveit::planning_interface::MoveGroup::Plan plan;
-            auto err = l_mach->move_group->plan(plan);
+            auto err = l_mach->move_group->move();
             if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
                 ROS_WARN("Failed to plan to home position");
                 return false;
             }
-
-            control_msgs::FollowJointTrajectoryGoal goal;
-            goal.trajectory = plan.trajectory_.joint_trajectory;
-
-            auto state = l_mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
-            if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
-                ROS_ERROR("Failed to execute trajectory to home position");
-                return false;
-            }
         }
+
+        // {
+        //     moveit::planning_interface::MoveGroup::Plan plan;
+        //     auto err = l_mach->move_group->plan(plan);
+        //     if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+        //         ROS_WARN("Failed to plan to home position");
+        //         return false;
+        //     }
+
+        //     control_msgs::FollowJointTrajectoryGoal goal;
+        //     goal.trajectory = plan.trajectory_.joint_trajectory;
+
+        //     auto state = l_mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
+        //     if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
+        //         ROS_ERROR("Failed to execute trajectory to home position");
+        //         return false;
+        //     }
+        // }
     }
 
     {
         auto v = r_mach->home_position;
-        for (auto& value : v) {
-            value *= M_PI / 180.0;
-        }
 
         r_mach->move_group->setJointValueTarget(v);
 
         {
-            moveit::planning_interface::MoveGroup::Plan plan;
-            auto err = r_mach->move_group->plan(plan);
+            auto err = r_mach->move_group->move();
             if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
                 ROS_WARN("Failed to plan to home position");
                 return false;
             }
+            // moveit::planning_interface::MoveGroup::Plan plan;
+            // auto err = r_mach->move_group->plan(plan);
+            // if (err.val != moveit_msgs::MoveItErrorCodes::SUCCESS) {
+            //     ROS_WARN("Failed to plan to home position");
+            //     return false;
+            // }
 
-            control_msgs::FollowJointTrajectoryGoal goal;
-            goal.trajectory = plan.trajectory_.joint_trajectory;
+            // control_msgs::FollowJointTrajectoryGoal goal;
+            // goal.trajectory = plan.trajectory_.joint_trajectory;
 
-            auto state = r_mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
-            if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
-                ROS_ERROR("Failed to move to execute trajectory to home position");
-                return false;
-            }
+            // auto state = r_mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
+            // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
+            //     ROS_ERROR("Failed to move to execute trajectory to home position");
+            //     return false;
+            // }
         }
     }
 
@@ -785,6 +791,91 @@ bool TryPickObject(PickMachine* mach, bool lock = true)
     }
 }
 
+// 0 = no goals sent, 1 = right arm goal sent, 2 = left arm goal sent, 3 = both arm goals sent
+int TryPickObject(PickMachine* lmach, PickMachine* rmach)
+{
+    LockWorldState(&g_world_state);
+
+    if (g_world_state.objects.empty()) {
+        UnlockWorldState(&g_world_state);
+        return 0;
+    }
+
+    if (g_world_state.objects.size() == 1) {
+        // one object...choose an arm
+        if (TryPickObject(rmach, false)) {
+            UnlockWorldState(&g_world_state);
+            return 1;
+        } else if (TryPickObject(lmach, false)) {
+            UnlockWorldState(&g_world_state);
+            return 2;
+        } else {
+            UnlockWorldState(&g_world_state);
+            return 0;
+        }
+    }
+
+    auto now = ros::Time::now();
+    // 1. Try to send one grasp goal to each arm, prefer to grasp objects
+    // closer to the robot with the left arm (front arm, which could
+    // obstruct the object from reaching the back arm)
+    geometry_msgs::PoseStamped l_goal, r_goal;
+    double lo_speed, ro_speed;
+    double l_time_to_grasp, r_time_to_grasp;
+    bool l_sent = false, r_sent = false;
+
+    for (size_t i = 0; i < g_world_state.objects.size(); ++i) {
+        auto& o = g_world_state.objects[i];
+        if (o.claimed) continue;
+
+        geometry_msgs::Vector3Stamped o_vel_bar;
+        if (!EstimateObjectVelocity(now, &o, g_robot_frame, 1.0, 2, &o_vel_bar)) continue;
+
+        ROS_WARN("ONE OBJECTS IN VIEW!");
+
+        geometry_msgs::PoseStamped o_pose;
+        geometry_msgs::Vector3Stamped o_vel;
+        TryHardTransformPose(g_robot_frame, o.pose_estimates.back().pose, o_pose);
+        TryHardTransformVector(g_robot_frame, o_vel_bar, o_vel);
+
+        auto center = 0.43; //0.4;
+        if (o_pose.pose.position.x < center) {
+            // prefer to send goal to the left
+            if (ComputeGraspGoal(lmach, o_pose, o_vel, &l_goal, &lo_speed, &l_time_to_grasp) &&
+                SendGoal(lmach, l_goal, lo_speed, l_time_to_grasp, o.id))
+            {
+                o.claimed = true;
+                UnlockWorldState(&g_world_state);
+                return 2;
+            } else if (ComputeGraspGoal(rmach, o_pose, o_vel, &r_goal, &ro_speed, &r_time_to_grasp) &&
+                SendGoal(rmach, r_goal, ro_speed, r_time_to_grasp, o.id))
+            {
+                o.claimed = true;
+                UnlockWorldState(&g_world_state);
+                return 1;
+            }
+        } else {
+            // send goal to the right
+            if (ComputeGraspGoal(rmach, o_pose, o_vel, &r_goal, &ro_speed, &r_time_to_grasp) &&
+                SendGoal(rmach, r_goal, ro_speed, r_time_to_grasp, o.id))
+            {
+                o.claimed = true;
+                UnlockWorldState(&g_world_state);
+                return 1;
+            } else if (ComputeGraspGoal(lmach, o_pose, o_vel, &l_goal, &lo_speed, &l_time_to_grasp) &&
+                SendGoal(lmach, l_goal, lo_speed, l_time_to_grasp, o.id))
+            {
+                o.claimed = true;
+                UnlockWorldState(&g_world_state);
+                return 2;
+            }
+        }
+    }
+
+    UnlockWorldState(&g_world_state);
+    return 0;
+}
+
 PickState DoPlanPickup(PickMachine* mach)
 {
     ROS_INFO("Plan link '%s' to grasp pose", mach->move_group->getEndEffectorLink().c_str());
@@ -1120,45 +1211,44 @@ int main(int argc, char* argv[])
     states[(int)PickState::OpenGripper].pump = DoOpenGripper;
     states[(int)PickState::MoveToHome].pump = DoMoveToHome;
 
-//     ROS_INFO("Initialize left picking machine");
-//     PickMachine left_machine;
-//     left_machine.prev_state = PickState::PrepareGripper;
-//     left_machine.curr_state = PickState::PrepareGripper;
-//     left_machine.next_state = PickState::PrepareGripper;
-//     left_machine.goal_ready = false;
-//     left_machine.move_group.reset(new MoveGroup(
-//                 "left_arm", boost::shared_ptr<tf::Transformer>(), ros::WallDuration(25.0)));
-//     left_machine.move_group->setPlanningTime(allowed_planning_time);
-//     left_machine.move_group->setPlannerId("left_arm[arastar_bfs_manip]");
-//     left_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
-//     left_machine.move_group->startStateMonitor();
-//     left_machine.min_workspace_y = 0.05;
-//     left_machine.max_workspace_y = 0.4;
-//     left_machine.home_position = {
-// //        64.72, 5.16, 160.66, -89.70, 106.84, -110.93, 1.00
-//         49.38, 6.75, 167.66, -104.50, 137.01, -114.57, 0.0
-//     };
-//     left_machine.dropoff_position = {
-// //        86.99, 20.40, 73.15, -110.59, 141.89, -28.94, 0.0
-//         94.72, 5.16, 160.66, -89.70, 106.84, -110.93, 1.00
-//     };
+    ROS_INFO("Initialize left picking machine");
+    PickMachine left_machine;
+    left_machine.prev_state = PickState::PrepareGripper;
+    left_machine.curr_state = PickState::PrepareGripper;
+    left_machine.next_state = PickState::PrepareGripper;
+    left_machine.goal_ready = false;
+    left_machine.move_group.reset(new MoveGroup(
+                "left_arm", boost::shared_ptr<tf::Transformer>(), ros::WallDuration(25.0)));
+    left_machine.move_group->setPlanningTime(allowed_planning_time);
+    left_machine.move_group->setPlannerId("left_arm[arastar_bfs_manip]");
+    left_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
+    left_machine.move_group->startStateMonitor();
+    left_machine.min_workspace_y = 0.25;
+    left_machine.max_workspace_y = 0.4;
+    left_machine.home_position = {
+        //-0.736, -1.052, -0.211, -0.9225, -0.6473, 0.017, 0.133
+        0.736, -1.052, -0.243, -0.807, -0.2405, 0.017, 0.133
+    };
+    left_machine.dropoff_position = {
+        0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+    };
 
-//     ROS_INFO("Create Left Gripper Command Action Client");
-//     left_machine.gripper_command_client.reset(new GripperCommandActionClient(
-//                 "l_gripper_controller/gripper_action"));
-//     if (!left_machine.gripper_command_client->waitForServer(ros::Duration(10.0))) {
-//         ROS_ERROR("Gripper Action client not available");
-//         return 1;
-//     }
+    // ROS_INFO("Create Left Gripper Command Action Client");
+    // left_machine.gripper_command_client.reset(new GripperCommandActionClient(
+    //             "l_gripper_controller/gripper_action"));
+    // if (!left_machine.gripper_command_client->waitForServer(ros::Duration(10.0))) {
+    //     ROS_ERROR("Gripper Action client not available");
+    //     return 1;
+    // }
 
-//     ROS_INFO("Create Left Arm Follow Joint Trajectory Action Client");
-//     left_machine.follow_joint_trajectory_client.reset(new FollowJointTrajectoryActionClient(
-//                 l_arm_action_name + "/follow_joint_trajectory"));
-//     if (!left_machine.follow_joint_trajectory_client->waitForServer(ros::Duration(10.0))) {
-//         ROS_ERROR("Follow Joint Trajectory client not available");
-//         return 1;
-//     }
-//     left_machine.states = states;
+    // ROS_INFO("Create Left Arm Follow Joint Trajectory Action Client");
+    // left_machine.follow_joint_trajectory_client.reset(new FollowJointTrajectoryActionClient(
+    //             l_arm_action_name + "/follow_joint_trajectory"));
+    // if (!left_machine.follow_joint_trajectory_client->waitForServer(ros::Duration(10.0))) {
+    //     ROS_ERROR("Follow Joint Trajectory client not available");
+    //     return 1;
+    // }
+    left_machine.states = states;
 
     ROS_INFO("Initialize right picking machine");
     PickMachine right_machine;
@@ -1202,14 +1292,37 @@ int main(int argc, char* argv[])
     // }
     right_machine.states = states;
 
-#if 0
+#if 1
+
+    ResetArms(&left_machine, &right_machine);
+
+    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
+
     auto l_mach_thread = std::thread(RunStateMachine, &left_machine);
     auto r_mach_thread = std::thread(RunStateMachine, &right_machine);
 
     DoLocalizeConveyor();
 
-    ros::Rate loop_rate(1.0);
-    while (ros::ok) {
+    ros::Rate loop_rate(30.0);
+    auto prev_picks = -1;
+    auto picks = 0;
+
+    while (ros::ok()) {
+        if (right_machine.goal_ready){
+            tf::StampedTransform transform_r;
+            transform_r.frame_id_ = "base_footprint";
+            transform_r.child_frame_id_ = "goal_r";
+            tf::poseMsgToTF(right_machine.grasp_pose_goal.pose, transform_r);
+            g_broadcaster->sendTransform(transform_r);
+        }
+        if (left_machine.goal_ready){
+            tf::StampedTransform transform_l;
+            transform_l.frame_id_ = "base_footprint";
+            transform_l.child_frame_id_ = "goal_l";
+            tf::poseMsgToTF(right_machine.grasp_pose_goal.pose, transform_l);
+            g_broadcaster->sendTransform(transform_l);
+        }
         // update objects
 
         // preconditions
@@ -1217,24 +1330,75 @@ int main(int argc, char* argv[])
         //    all other machines waiting for goals or moving to dropoff
         PickMachine* idle_machine = NULL;
         PickMachine* other_machine = NULL;
-        if (right_machine.curr_state == PickState::WaitForGoal) {
-            idle_machine = &right_machine;
-            other_machine = &left_machine;
-        } else if (left_machine.curr_state == PickState::WaitForGoal) {
-            idle_machine = &left_machine;
-            other_machine = &right_machine;
+
+        if (picks != prev_picks) {
+            prev_picks = picks;
+            ROS_WARN("picks = %d", picks);
         }
 
-        if (idle_machine != NULL &&
-            (
-                other_machine->curr_state == PickState::WaitForGoal ||
-                other_machine->curr_state == PickState::ExecuteDropoff ||
-                other_machine->curr_state == PickState::OpenGripper
-            ))
+        if (right_machine.curr_state == PickState::WaitForGoal &&
+            left_machine.curr_state == PickState::WaitForGoal)
         {
-            // select a target object
-            TryPickObject(idle_machine, idle_machine == &left_machine);
+            auto res = TryPickObject(&left_machine, &right_machine);
+            switch (res) {
+            case 0:
+                break;
+            case 1:
+            case 2:
+                picks += 1;
+                break;
+            case 3:
+                picks += 2;
+                break;
+            }
+        } else {
+#define FORCE_ALTERNATE 1
+#if FORCE_ALTERNATE
+            if ((picks & 1) == 0) {
+                if (right_machine.curr_state == PickState::WaitForGoal) {
+                    idle_machine = &right_machine;
+                    other_machine = &left_machine;
+                } else if (left_machine.curr_state == PickState::WaitForGoal) {
+                    idle_machine = &left_machine;
+                    other_machine = &right_machine;
+                }
+            } else {
+                if (left_machine.curr_state == PickState::WaitForGoal) {
+                    idle_machine = &left_machine;
+                    other_machine = &right_machine;
+                } else if (right_machine.curr_state == PickState::WaitForGoal) {
+                    idle_machine = &right_machine;
+                    other_machine = &left_machine;
+                }
+            }
+#else
+            if (right_machine.curr_state == PickState::WaitForGoal) {
+                idle_machine = &right_machine;
+                other_machine = &left_machine;
+            } else if (left_machine.curr_state == PickState::WaitForGoal) {
+                idle_machine = &left_machine;
+                other_machine = &right_machine;
+            }
+#endif
+    
+            if (idle_machine != NULL &&
+                (
+                    other_machine->curr_state != PickState::PlanPickup
+#if 0
+                    ||
+                    other_machine->curr_state == PickState::WaitForGoal ||
+                    other_machine->curr_state == PickState::ExecuteDropoff ||
+                    other_machine->curr_state == PickState::OpenGripper
+#endif
+                ))
+            {
+                // select a target object
+                if (TryPickObject(idle_machine)) {
+                    ++picks;
+                }
+            }
         }
+
 
         loop_rate.sleep();
     }
@@ -1243,13 +1407,14 @@ int main(int argc, char* argv[])
 
     l_mach_thread.join();
     r_mach_thread.join();
+
 #endif
 
+#if 0
     // only enable right arm 
     auto r_mach_thread = std::thread(RunStateMachine, &right_machine);
 
     DoLocalizeConveyor();
-    // ResetArms(&left_machine, &right_machine);
     ResetArm(&right_machine);
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
@@ -1272,5 +1437,6 @@ int main(int argc, char* argv[])
 
     ros::waitForShutdown();
     r_mach_thread.join();
+#endif
     return 0;
 }
