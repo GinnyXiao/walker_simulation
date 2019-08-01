@@ -13,11 +13,19 @@ For simulation using moveit's default fake controller.
 
 ## Experiment
 
+Possible criteria for ensuring a good parameter value:
+
+1. large reachable workspace
+2. short average planning time
+3. short average total time (planning + execution)
+
+Each experiment was performed twice to ensure the correctness.
+
 ### 1) Conveyor height
 
 How the conveyor height affects the workspace and planning time.
 
-Experimented heights: 0.66, 0.70, 
+Experimented heights: 0.66, 0.70, 0.74
 
 #### 1.1) height = 0.66 (z = 0.76)
 
@@ -47,33 +55,34 @@ Experimented heights: 0.66, 0.70,
 |      (0.25, -0.50, 0.80)       |            **FAIL!**             |               -               |                -                |              -               |
 
 - reachable workspace: [-0.25, -0.45]
-- average planning time: 1.17
-- average plan+execute time (drop-off to goal): 8.35
+- average planning time: 1.34
+- average plan+execute time (drop-off to goal): 9.89
 
 #### 1.3) height = 0.74 (z = 0.84)
 
 | predicted grasp pose (x, y, z) | planning time (drop-off -> goal) | total time (goal -> drop-off) | planning time (goal ->drop-off) | total time (goal ->drop-off) |
-| :----------------------------: | :------------------------------: | :---------------------------: | ------------------------------- | ---------------------------- |
-|      (0.25, -0.20, 0.84)       |            **FAIL!**             |               -               |                                 |                              |
-|      (0.25, -0.25, 0.84)       |                                  |                               |                                 |                              |
-|      (0.25, -0.30, 0.84)       |                                  |                               |                                 |                              |
-|      (0.25, -0.35, 0.84)       |                                  |                               |                                 |                              |
-|      (0.25, -0.40, 0.84)       |                                  |                               |                                 |                              |
-|      (0.25, -0.45, 0.84)       |                                  |                               |                                 |                              |
-|      (0.25, -0.50, 0.84)       |            **FAIL!**             |               -               |                                 |                              |
+| :----------------------------: | :------------------------------: | :---------------------------: | :-----------------------------: | :--------------------------: |
+|      (0.25, -0.20, 0.84)       |            **FAIL!**             |               -               |                -                |              -               |
+|      (0.25, -0.25, 0.84)       |               2.11               |             11.10             |              1.12               |            10.77             |
+|      (0.25, -0.30, 0.84)       |               1.13               |           **FAIL!**           |                -                |              -               |
+|      (0.25, -0.35, 0.84)       |            **FAIL!**             |               -               |                -                |              -               |
+|      (0.25, -0.40, 0.84)       |            **FAIL!**             |               -               |                -                |              -               |
+|      (0.25, -0.45, 0.84)       |            **FAIL!**             |               -               |                -                |              -               |
+|      (0.25, -0.50, 0.84)       |            **FAIL!**             |               -               |                -                |              -               |
 
-- reachable workspace: [-0.25, -0.30]
-- average planning time: 1.17
-- average plan+execute time (drop-off to goal): 8.35
+- reachable workspace: small range near y = -0.25
+- average planning time: 1.62
+- average plan+execute time (drop-off to goal): 11.10
 
 #### 1.4) Results
 
 | Conveyor height (m) | Reachable workspace | Average planning time | Average total time |
 | :-----------------: | :-----------------: | :-------------------: | :----------------: |
-|        0.66         |   [-0.25, -0.30]    |                       |                    |
-|        0.70         |   [-0.25, -0.45]    |                       |                    |
-|        0.74         |                     |                       |                    |
-|                     |                     |                       |                    |
+|        0.66         |   [-0.25, -0.30]    |         1.17          |        8.35        |
+|        0.70         |   [-0.25, -0.45]    |         1.34          |        9.89        |
+|        0.74         |       [-0.25]       |         1.72          |       11.10        |
+
+- Best height: 0.70 m , it has largest working workspace and reasonable planning times.
 
 ### 2) Conveyor speed
 
@@ -82,7 +91,7 @@ How the conveyor speed affects the workspace and planning time.
 #### 2.1) Resulst
 
 - Has nothing to do with the planning time, for the planning time depends only on the initial configuration, goal, robot config space and world config space.
-- Limits the workspace. If the object is moving fast, it will have moved a longer distance by the time when the arm moves to the predicted pose.
+- High speeds limit the workspace. If the object is moving fast, it will have moved a longer distance by the time when the arm moves to the predicted pose.
 
 ### 3) Home config
 
@@ -135,13 +144,13 @@ Whether to have a home configuration or not. A home configuration is some arm co
 
 | Home config? | Reachable workspace | Average planning time | Average total time |
 | :----------: | :-----------------: | :-------------------: | :----------------: |
-|     yes      |   [-0.25, -0.45]    |                       |                    |
-|      no      |   [-0.25, -0.45]    |                       |                    |
+|     yes      |   [-0.25, -0.45]    |         0.30          |        3.97        |
+|      no      |   [-0.25, -0.45]    |         1.34          |        9.89        |
 
-- With a home config, the planning time to reach goal decreases.
+- With a home config, the planning times to reach goal decrease considerably. And the execution times are not only shorter but also stabler. 
 
 ## Conclusion
 
-1. Working conveyor height range: 
-2. Best conveyor height: 
+1. Working conveyor height range: 0.7 m (z = 0.8 m)
 3. Conveyor speed doesn't really affect the planner itself. Given the speed, we will be able to calculate how much time left to plan and execute the arm motion.
+3. Better to specify a home config (somewhere above the conveyor) to wait for goal before executing grasp.

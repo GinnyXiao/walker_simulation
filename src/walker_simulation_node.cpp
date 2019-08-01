@@ -1108,7 +1108,7 @@ int main(int argc, char* argv[])
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
     right_machine.min_workspace_y = -0.65;
-    right_machine.max_workspace_y = -0.5;
+    right_machine.max_workspace_y = -0.40;
     right_machine.home_position = {
         // -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
         -0.0345, -1.4979, 0.1055, -0.7480, 0.2405, 0.017, 0.133
