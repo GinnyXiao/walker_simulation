@@ -2,6 +2,18 @@
 
 For simulation using moveit's default fake controller.
 
+## Abstract
+
+The purpose of this report is to (1) find reasonable configurations for walker robot to perform pick-and-place tasks on a moving conveyor belt, and (2) provide some insights about the workspace of walker's right arm.
+
+We tested three parameters, namely: conveyor height, conveyor speed, and home configuration (waiting pose before grasping). The performance was evaluated using three criteria:
+
+1. **Range of reachable workspace**. The reachable workspace (where the planner is able to find a solution within allowed time) should be large to ensure robustness.
+2. **Planning times**. The planning time should be reasonably small.
+3. **Total time for planning & execution**. The actual execution time determines how fast the conveyor can move.
+
+Based on the above criteria, we recommend to set the conveyor height to 0.7 m and to use a home config slightly above the conveyor before planning for a moving object. Using the best configuration, we have the reachable workspace [-0.25, -0.45], average planning time 0.30 sec, and average total time 3.97 secs to move to the grasp pose.
+
 ## Setup
 
 - planning group: right arm
