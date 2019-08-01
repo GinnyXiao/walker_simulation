@@ -105,6 +105,10 @@ How the conveyor speed affects the workspace and planning time.
 
 Whether to have a home configuration or not. A home configuration is some arm configuration that is set above the conveyor. After the drop-off motion, the robot will first move to the home config and then wait for the next goal. 
 
+Work pipeline with a home config: home config -> predicted goal -> drop-off pose -> home config
+
+Work pipeline without a home config: drop-off config -> predicted goal -> drop-off config
+
 - home configuration (joint angles): [ -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133 ]
 - conveyor height = 0.7 m
 
@@ -164,5 +168,5 @@ Fig 3. without home cinfig (left) v.s. with home config (right)
 ## Conclusion
 
 1. Working conveyor height range: 0.7 m (z = 0.8 m)
-3. Conveyor speed doesn't really affect the planner itself. Given the speed, we will be able to calculate how much time left to plan and execute the arm motion.
+2. Conveyor speed doesn't really affect the planner itself. Given the speed, we will be able to calculate how much time left to plan and execute the arm motion.
 3. Better to specify a home config (somewhere above the conveyor) to wait for goal before executing grasp.
