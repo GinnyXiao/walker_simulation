@@ -11,6 +11,10 @@ For simulation using moveit's default fake controller.
 - allowed planning time: 3.0 secs
 - height of the grasp pose: conveyor_height + 0.1 m
 
+![setup](figures/setup.png)
+
+Fig 1. Experimental setup
+
 ## Experiment
 
 Possible criteria for ensuring a good parameter value:
@@ -26,6 +30,10 @@ Each experiment was performed twice to ensure the correctness.
 How the conveyor height affects the workspace and planning time.
 
 Experimented heights: 0.66, 0.70, 0.74
+
+![conveyor height](figures/conveyor_height.png)
+
+Fig 2. (1) height = 0.66; (2) height = 0.70; (3) height = 0.74
 
 #### 1.1) height = 0.66 (z = 0.76)
 
@@ -99,6 +107,10 @@ Whether to have a home configuration or not. A home configuration is some arm co
 
 - home configuration (joint angles): [ -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133 ]
 - conveyor height = 0.7 m
+
+![home config](figures/home_config.png)
+
+Fig 3. without home cinfig (left) v.s. with home config (right)
 
 #### 3.1) with home config
 
