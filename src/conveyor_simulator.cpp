@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
         }
 
         // spawn a new ar marker
-        if (now > last_marker_spawn + ros::Duration(5.0)) {
+        if (now > last_marker_spawn + ros::Duration(35.0)) {
             ar_track_alvar_msgs::AlvarMarker marker;
 
             // create a new id for this marker

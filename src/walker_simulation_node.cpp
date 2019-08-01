@@ -92,6 +92,7 @@ struct PickMachine
     std::atomic<bool> goal_ready;
 
     ros::Time time_at_execute;
+    ros::Time time_at_dropoff;
 
     // an upper bound on the time to plan and execute the motion to a grasp location
     double time_to_reach_grasp = 4.2;
@@ -790,6 +791,7 @@ PickState DoGraspObject(PickMachine* mach)
 
     // how long it actually took to plan and execute the arm motion
     ros::Duration execution_duration = ros::Time::now() - mach->time_at_execute;
+    ROS_WARN("execution duration for grasp is %f secs", execution_duration.toSec());
 
     double wait_time = std::max(/*g_time_to_reach_grasp*/ mach->time_to_grasp - execution_duration.toSec(), 0.0);
     //wait_time += buffer_time;
@@ -814,6 +816,7 @@ PickState DoCloseGripper(PickMachine* mach)
 
 PickState DoPlanDropoff(PickMachine* mach)
 {
+    mach->time_at_dropoff = ros::Time::now();
     WaitForMoveGroup();
     g_move_group_busy = true;
 
@@ -835,12 +838,12 @@ PickState DoPlanDropoff(PickMachine* mach)
 
 PickState DoExecuteDropoff(PickMachine* mach)
 {
-    // control_msgs::FollowJointTrajectoryGoal goal;
-    // goal.trajectory = mach->dropoff_plan.trajectory_.joint_trajectory;
-    // auto state = mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
-    // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
-    //     ROS_ERROR("ALSO PRETTY BAD!");
-    // }
+    control_msgs::FollowJointTrajectoryGoal goal;
+    goal.trajectory = mach->dropoff_plan.trajectory_.joint_trajectory;
+    auto state = mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
+    if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
+        ROS_ERROR("ALSO PRETTY BAD!");
+    }
     g_move_group_busy = true;
     auto err = mach->move_group->execute(mach->dropoff_plan);
     g_move_group_busy = false;
@@ -849,6 +852,9 @@ PickState DoExecuteDropoff(PickMachine* mach)
         ROS_ERROR("Failed to move arm to dropoff pose");
         return PickState::WaitForGoal;
     }
+
+    ros::Duration duration = ros::Time::now() - mach->time_at_dropoff;
+    ROS_WARN("Dropoff duration: %f secs", duration.toSec());
 
     return PickState::OpenGripper;
 }
@@ -861,6 +867,7 @@ PickState DoOpenGripper(PickMachine* mach)
 
 PickState DoMoveToHome(PickMachine* mach)
 {
+    ros::Time time_at_move_home = ros::Time::now();
     WaitForMoveGroup();
     g_move_group_busy = true;
 
@@ -892,7 +899,8 @@ PickState DoMoveToHome(PickMachine* mach)
     // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
     //     ROS_ERROR("ALSO PRETTY BAD!");
     // }
-
+    ros::Duration plan_to_home_duration = ros::Time::now() - time_at_move_home;
+    ROS_WARN("Plan to home duration: %f secs", plan_to_home_duration.toSec());
     return PickState::WaitForGoal;
 }
 
@@ -1100,12 +1108,11 @@ int main(int argc, char* argv[])
     right_machine.min_workspace_y = -0.450;
     right_machine.max_workspace_y = -0.27;
     right_machine.home_position = {
-        // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
         -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
     };
     right_machine.dropoff_position = {
-        // -79.38, 15.53, -68.79, -95.13, 359.0, -66.94, 79.95
-        -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+        // -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+        -0.0345, -1.4979, 0.1055, -0.7480, 0.2405, 0.017, 0.133
     };
 
     // ROS_INFO("Create Right Gripper Command Action Client");
@@ -1125,7 +1132,7 @@ int main(int argc, char* argv[])
     // }
     right_machine.states = states;
 
-#if 1
+#if 0
 
     ResetArms(&left_machine, &right_machine);
 
@@ -1243,7 +1250,7 @@ int main(int argc, char* argv[])
 
 #endif
 
-#if 0
+#if 1
     // only enable right arm 
     auto r_mach_thread = std::thread(RunStateMachine, &right_machine);
 
