@@ -559,7 +559,7 @@ bool ComputeGraspGoal(
     grasp_pose_goal->pose.orientation.x = grasp_pose_goal->pose.orientation.y = 0.0;
     grasp_pose_goal->pose.orientation.z = 0.0;
     grasp_pose_goal->pose.orientation.w = 1; // 0.5 * sqrt(2.0);
-    grasp_pose_goal->pose.position.z = 0.8;
+    grasp_pose_goal->pose.position.z = 0.84;
     // grasp_pose_goal->pose.orientation.x = 0.1472033;
     // grasp_pose_goal->pose.orientation.y = 0.2944066;
     // grasp_pose_goal->pose.orientation.z = 0.0;
@@ -838,12 +838,12 @@ PickState DoPlanDropoff(PickMachine* mach)
 
 PickState DoExecuteDropoff(PickMachine* mach)
 {
-    control_msgs::FollowJointTrajectoryGoal goal;
-    goal.trajectory = mach->dropoff_plan.trajectory_.joint_trajectory;
-    auto state = mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
-    if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
-        ROS_ERROR("ALSO PRETTY BAD!");
-    }
+    // control_msgs::FollowJointTrajectoryGoal goal;
+    // goal.trajectory = mach->dropoff_plan.trajectory_.joint_trajectory;
+    // auto state = mach->follow_joint_trajectory_client->sendGoalAndWait(goal);
+    // if (state != actionlib::SimpleClientGoalState::SUCCEEDED) {
+    //     ROS_ERROR("ALSO PRETTY BAD!");
+    // }
     g_move_group_busy = true;
     auto err = mach->move_group->execute(mach->dropoff_plan);
     g_move_group_busy = false;
@@ -855,6 +855,8 @@ PickState DoExecuteDropoff(PickMachine* mach)
 
     ros::Duration duration = ros::Time::now() - mach->time_at_dropoff;
     ROS_WARN("Dropoff duration: %f secs", duration.toSec());
+
+    ros::Duration(10).sleep();
 
     return PickState::OpenGripper;
 }
@@ -908,7 +910,7 @@ auto MakeConveyorCollisionObject() -> moveit_msgs::CollisionObject
 {
      moveit_msgs::CollisionObject conveyor;
 
-    double height = 0.7; //0.64 + ADJUST;
+    double height = 0.74; //0.64 + ADJUST;
 
     geometry_msgs::PoseStamped p;
     p.header.frame_id = g_robot_frame;
@@ -1105,10 +1107,11 @@ int main(int argc, char* argv[])
     right_machine.move_group->setPlannerId("right_arm[arastar_bfs_manip]");
     right_machine.move_group->setWorkspace(-0.4, -1.2, 0.0, 1.10, 1.2, 2.0);
     right_machine.move_group->startStateMonitor();
-    right_machine.min_workspace_y = -0.450;
-    right_machine.max_workspace_y = -0.27;
+    right_machine.min_workspace_y = -0.65;
+    right_machine.max_workspace_y = -0.5;
     right_machine.home_position = {
-        -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+        // -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
+        -0.0345, -1.4979, 0.1055, -0.7480, 0.2405, 0.017, 0.133
     };
     right_machine.dropoff_position = {
         // -0.736, -1.052, 0.243, -0.807, 0.2405, 0.017, 0.133
@@ -1274,6 +1277,8 @@ int main(int argc, char* argv[])
         }
         loop_rate.sleep();
     }
+
+    planning_scene_interface.removeCollisionObjects(planning_scene_interface.getKnownObjectNames());
 
     ros::waitForShutdown();
     r_mach_thread.join();

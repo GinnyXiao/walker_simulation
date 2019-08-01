@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     auto frame_id = "base_footprint";
     auto conveyor_length = 0.26;
     auto conveyor_width = 2.14;
-    auto conveyor_height = 0.70; // 0.64;
+    auto conveyor_height = 0.74; // 0.64;
 
     auto conveyor_pos_x = 0.25;
 

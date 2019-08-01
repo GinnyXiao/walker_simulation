@@ -39,6 +39,8 @@ Pick-and-place simulation for wheeled walker robot.
 - [ ] Change the tip link to palm link: plan the center of the palm to grasp pose
 - [ ] Add grasping movements for hands
 - [ ] Take care not to topple the objects that the robot is not grasping 
+- [ ] Record statistics about the planner: planning time & execution time for the grasps (first & second)
+- [ ] Play with the height and speed of the conveyor, home position of the right arm 
 
 ## Troubleshooting
 
