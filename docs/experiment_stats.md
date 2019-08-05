@@ -12,7 +12,7 @@ We tested three parameters, namely: conveyor height, conveyor speed, and home co
 2. **Planning times**. The planning time should be reasonably small.
 3. **Total time for planning & execution**. The actual execution time determines how fast the conveyor can move.
 
-Based on the above criteria, we recommend to set the conveyor height to 0.7 m and to use a home config slightly above the conveyor before planning for a moving object. Using the best configuration, we have the reachable workspace [-0.25, -0.45], average planning time 0.30 sec, and average total time 3.97 secs to move to the grasp pose.
+Based on the above criteria, we recommend to set the conveyor height to 0.7 m and to use a home config slightly above the conveyor before planning for a moving object. Using the best configuration, we have the reachable workspace [-0.25, -0.45], average planning time 0.30 sec, and average total time 3.97 secs to move to the grasp pose. The average time from goal to drop-off pose is about 5-6 secs for most cases.
 
 ## Setup
 
@@ -21,13 +21,13 @@ Based on the above criteria, we recommend to set the conveyor height to 0.7 m an
 - planner id: arastar.bfs.manip
 - SNAP_TO_XYZ_RPY thresh: 0.200
 - allowed planning time: 3.0 secs
-- height of the grasp pose: conveyor_height + 0.1 m
+- height of the grasp pose: conveyor_height + 0.1 m, assuming the hight of the object is 0.1 m
 
 ![setup](figures/setup.png)
 
 Fig 1. Experimental setup
 
-## Experiment
+## Experiments
 
 Possible criteria for ensuring a good parameter value:
 
@@ -73,6 +73,16 @@ Fig 2. (1) height = 0.66; (2) height = 0.70; (3) height = 0.74
 |      (0.25, -0.40, 0.80)       |               1.12               |             5.30              |              1.11               |             5.03             |
 |      (0.25, -0.45, 0.80)       |               0.20               |             4.15              |              0.12               |             3.50             |
 |      (0.25, -0.50, 0.80)       |            **FAIL!**             |               -               |                -                |              -               |
+
+| predicted grasp pose (x, y, z) | planning time (drop-off -> goal) | total time (goal -> drop-off) | num of expansions | trajectory points |
+| :----------------------------: | :------------------------------: | :---------------------------: | :---------------: | :---------------: |
+|      (0.25, -0.20, 0.80)       |            **FAIL!**             |               -               |         -         |         -         |
+|      (0.25, -0.25, 0.80)       |               1.12               |             11.00             |        949        |        84         |
+|      (0.25, -0.30, 0.80)       |               1.37               |             12.30             |        849        |        87         |
+|      (0.25, -0.35, 0.80)       |               2.90               |             16.70             |       1531        |        95         |
+|      (0.25, -0.40, 0.80)       |               1.12               |             5.30              |       1921        |        41         |
+|      (0.25, -0.45, 0.80)       |               0.20               |             4.15              |        120        |        40         |
+|      (0.25, -0.50, 0.80)       |            **FAIL!**             |               -               |         -         |         -         |
 
 - reachable workspace: [-0.25, -0.45]
 - average planning time: 1.34
