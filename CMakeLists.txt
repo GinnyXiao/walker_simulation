@@ -8,6 +8,7 @@ project(walker_simulation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   actionlib
   ar_track_alvar_msgs
   geometry_msgs
@@ -52,11 +53,17 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+
+add_message_files(
+    FILES
+    GraspPose.msg
+    Path1.msg
+)
+
+generate_messages(
+    DEPENDENCIES
+    std_msgs
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -143,6 +150,7 @@ include_directories(
 add_executable(walker_simulation_node src/walker_simulation_node.cpp)
 add_executable(conveyor_simulator src/conveyor_simulator.cpp)
 add_executable(publish_dummy_goal src/publish_dummy_goal.cpp)
+add_executable(two_step_planning src/two_step_planning.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -158,7 +166,15 @@ add_executable(publish_dummy_goal src/publish_dummy_goal.cpp)
 target_link_libraries(walker_simulation_node
   ${roscpp_LIBRARIES}
   ${tf_LIBRARIES}
-  ${actionlib_LIBRARIES}
+  #${actionlib_LIBRARIES}
+  ${moveit_ros_planning_interface_LIBRARIES}
+  #${catkin_LIBRARIES}
+)
+
+target_link_libraries(two_step_planning
+  ${roscpp_LIBRARIES}
+  ${tf_LIBRARIES}
+  #${actionlib_LIBRARIES}
   ${moveit_ros_planning_interface_LIBRARIES}
   #${catkin_LIBRARIES}
 )
