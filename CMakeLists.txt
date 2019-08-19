@@ -151,6 +151,7 @@ add_executable(walker_simulation_node src/walker_simulation_node.cpp)
 add_executable(conveyor_simulator src/conveyor_simulator.cpp)
 add_executable(publish_dummy_goal src/publish_dummy_goal.cpp)
 add_executable(two_step_planning src/two_step_planning.cpp)
+add_executable(multi_step_planner src/multi_step_planner.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -175,6 +176,13 @@ target_link_libraries(two_step_planning
   ${roscpp_LIBRARIES}
   ${tf_LIBRARIES}
   #${actionlib_LIBRARIES}
+  ${moveit_ros_planning_interface_LIBRARIES}
+  #${catkin_LIBRARIES}
+)
+
+target_link_libraries(multi_step_planner
+  ${roscpp_LIBRARIES}
+  ${tf_LIBRARIES}
   ${moveit_ros_planning_interface_LIBRARIES}
   #${catkin_LIBRARIES}
 )
