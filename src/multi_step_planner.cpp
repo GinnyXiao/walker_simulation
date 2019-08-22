@@ -133,7 +133,6 @@ PickState DoWaitForGoal(PickMachine* mach)
         }
         ros::Duration(1.0).sleep();
     }
-
     return PickState::Finished;
 }
 
@@ -379,8 +378,8 @@ int main(int argc, char *argv[])
     right_machine.move_group->startStateMonitor();
     right_machine.states = states;
 
-	// moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-	// planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
+	moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+	planning_scene_interface.applyCollisionObject(MakeConveyorCollisionObject());
 
     auto r_mach_thread = std::thread(RunStateMachine, &right_machine);
 
