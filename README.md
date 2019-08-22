@@ -36,11 +36,12 @@ Pick-and-place simulation for wheeled walker robot.
 - [x] Import nrw_demo pipeline
 - [x] Specify home positions (above the conveyor?)
 - [x] Enable both arms: add left arm picks
-- [ ] Change the tip link to palm link: plan the center of the palm to grasp pose
+- [x] Change the tip link to palm link: plan the center of the palm to grasp pose
 - [ ] Add grasping movements for hands
 - [ ] Take care not to topple the objects that the robot is not grasping 
 - [x] Record statistics about the planner: planning time & execution time for the grasps (first & second)
 - [x] Play with the height and speed of the conveyor, home position of the right arm 
+- [x] Add two step planning
 
 ## Troubleshooting
 

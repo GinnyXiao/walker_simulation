@@ -2,6 +2,7 @@
 #include <ros/ros.h>
 #include <mutex>
 #include <thread>
+#include <unordered_set>
 
 // #include <moveit/move_group_interface/move_group.h>
 #include <moveit/move_group_interface/move_group_interface.h>
@@ -63,12 +64,6 @@ struct PickMachine
 	geometry_msgs::PoseStamped grasp_pose_goal;
 };
 
-struct WorldState
-{
-    std::mutex grasp_mutex;
-    std::vector<geometry_msgs::PoseStamped> grasp_pose_buffer;
-};
-
 // global variables
 ros::Publisher g_path_publisher;
 std::unique_ptr<tf::TransformBroadcaster> g_broadcaster;
@@ -76,18 +71,7 @@ std::unique_ptr<tf::TransformListener> g_listener;
 const char *g_planning_frame = "odom_combined"; // TODO: take this from the MoveGroupInterface
 const char *g_robot_frame = "base_footprint";
 std::atomic<bool> g_move_group_busy(false);
-WorldState g_world_state;
 std::vector<geometry_msgs::PoseStamped> g_grasp_pose_buffer;
-
-void LockWorldState(WorldState* state)
-{
-    state->grasp_mutex.lock();
-}
-
-void UnlockWorldState(WorldState* state)
-{
-    state->grasp_mutex.unlock();
-}
 
 bool TryHardTransformVector(
     const std::string& frame_id,
@@ -130,16 +114,21 @@ void WaitForMoveGroup()
 
 void GraspPoseCallback(const geometry_msgs::PoseStamped& grasp)
 {
-	g_grasp_pose_buffer.push_back(grasp);
-    ROS_INFO("buffer size: %d", g_grasp_pose_buffer.size());
-
+    int req;
+    ros::param::get("/walker_planner_request", req);
+    if (req)
+    {
+        ROS_INFO("Planning request received!");
+        ros::param::set("/walker_planner_request", 0);
+        g_grasp_pose_buffer.push_back(grasp);
+        ROS_INFO("buffer size: %d", g_grasp_pose_buffer.size());
+    }
 }
 
 PickState DoWaitForGoal(PickMachine* mach)
 {
     while (ros::ok()) {
         if (mach->goal_ready) {
-            mach->goal_ready = false; // consume goal
             return PickState::PlanToGoal;
         }
         ros::Duration(1.0).sleep();
@@ -197,11 +186,19 @@ bool PlanFromLastState(PickMachine *mach)
 
 PickState DoPlanToGoal(PickMachine* mach)
 {
+    int from_current_state = 1;
+    ros::param::get("/from_current_state", from_current_state);
 	bool plan_succeed;
-	plan_succeed = PlanFromCurrentState(mach);
-
+    if (from_current_state) {
+        plan_succeed = PlanFromCurrentState(mach);
+    } else {
+        plan_succeed = PlanFromLastState(mach);
+    }
+	
     g_grasp_pose_buffer.erase(g_grasp_pose_buffer.begin());
+    ROS_INFO("buffer size after planning: %d", g_grasp_pose_buffer.size());
 	ros::param::set("/walker_planner_done", 1);
+    mach->goal_ready = false;
 
 	if (plan_succeed) {
         ROS_WARN("Successfully planned to goal pose!");
@@ -216,7 +213,7 @@ PickState DoPlanToGoal(PickMachine* mach)
 PickState DoPublishPath(PickMachine* mach)
 {
     int iteration = 0; 
-    int iterations = 1000;
+    int iterations = 100;
     ros::Rate r(10);
     while (ros::ok && iteration < iterations) {
         walker_simulation::Path1 path;
@@ -325,16 +322,9 @@ bool PlanForNextGoal(PickMachine* mach)
     if (g_grasp_pose_buffer.empty()) {
 		ROS_WARN("No grasp goals available!");
 		return false;
-	}
-
-    if (mach->goal_ready) return false; // we're busy
-
-    int req;
-    ros::param::get("/walker_planner_request", req);
-    if (req)
-    {
-        ROS_INFO("Planning request received!");
-        ros::param::set("/walker_planner_request", 0);
+	} else if (mach->goal_ready) {
+        return false; // we're busy
+    } else {
         WaitForMoveGroup();
         mach->grasp_pose_goal = g_grasp_pose_buffer[0];
         mach->goal_ready = true;
