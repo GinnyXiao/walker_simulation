@@ -2,6 +2,9 @@
 
 ## Progress
 
+Aug 7 - Enabled two-step planning
+
+<iframe width="800" height="400" src="https://www.youtube.com/embed/UGPJTBJQhxU" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 July 20 - Both arms are enabled
 
 - Adjusted planning config for the left arm
@@ -14,6 +17,7 @@ July 18 - Can grasp multiple moving objects
 - Fixed snap generation problem - reconfigured IK client
 - Adjusted workspace
 
+<iframe width="800" height="400" src="https://www.youtube.com/embed/4PkUX8KWMjI" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 July 14 - Working nrw_demo pipeline
 
 - Planning for moving object 1
@@ -23,7 +27,6 @@ July 14 - Working nrw_demo pipeline
   - Change the tip link to palm link
 
 <iframe width="800" height="400" src="https://www.youtube.com/embed/Az6JW-LLw4k" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-
 July 10 - Can move to dummy goals
 
 - Planner ID: arastar.bfs.manip
